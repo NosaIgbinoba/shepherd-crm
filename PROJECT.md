@@ -6,11 +6,15 @@ more current than any individual conversation.
 
 ## Current phase
 
-**Phase 2: Supabase integration prepped, not yet connected — DONE.**
-Next up: Phase 3 — you create the actual Supabase project and flip it on
-(steps in `SUPABASE_SETUP.md`), then come back for real member data / any
-remaining features (departments, events/RSVPs, join requests are modeled in
-the schema but have no UI yet).
+**Phase 3: Connected to a real Supabase project — DONE.**
+Project `fslqsdggabmtysvbcgvi`, migration run, admin user created
+(`admin@jpd.church`, linked `public.users` row with `org_id='jpd'`,
+`role='admin'`), `.env.local` set, app verified loading against it with no
+console errors. **Not yet manually tested**: actually logging in and
+exercising the member list/form against real data — do that next in your
+own browser, since the password never went through this session.
+Next up: real member data entry, and/or UI for departments, events/RSVPs,
+join requests (schema exists, no UI yet).
 
 ## Stack decisions (and why)
 
@@ -85,6 +89,16 @@ direct equivalent of the org-scoped Firestore rules from the original brief.
   based on `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` presence — app still
   runs on the mock with zero env vars set. Not yet connected to a real
   project; `SUPABASE_SETUP.md` has the steps for when you're ready.
+- **2026-07-10** — Phase 3 complete. User created Supabase project
+  `fslqsdggabmtysvbcgvi`, ran the migration, created the `admin@jpd.church`
+  auth user and its `public.users` row. `.env.local` set with the project
+  URL + publishable key (gitignored, verified via `git check-ignore`).
+  Fixed `LoginPage.tsx` to only show the mock demo-credentials hint when
+  `isSupabaseConfigured` is false — it was showing stale
+  `admin@jpd.church / admin123` text even in live mode. Verified via
+  headless browser that the app loads against the live project with zero
+  console errors; actual login was left for the user to test manually since
+  the real password wasn't shared into this session.
 
 ## How to run
 
@@ -93,7 +107,8 @@ cd ~/shepherd-crm
 npm run dev
 ```
 
-Mock mode (default, no setup): log in with `admin@jpd.church` / `admin123`.
+Currently running in **live Supabase mode** (`.env.local` is set) — log in
+with the `admin@jpd.church` account and password created in the dashboard.
 
-Live Supabase mode: follow `SUPABASE_SETUP.md`, then set `.env.local` and
-restart `npm run dev`.
+To go back to mock mode: delete/rename `.env.local` and restart. Mock
+credentials: `admin@jpd.church` / `admin123`.
