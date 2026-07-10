@@ -1,14 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { AppUser } from "../../types";
-import { SEED_USERS } from "./mockUsers";
-
-const SESSION_KEY = "shepherd-crm:session";
+import { authRepository } from "./index";
 
 interface AuthContextValue {
   user: AppUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -18,23 +16,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) setUser(JSON.parse(raw));
-    setLoading(false);
+    authRepository.getSession().then((session) => {
+      setUser(session);
+      setLoading(false);
+    });
   }, []);
 
   async function login(email: string, password: string) {
-    const match = SEED_USERS.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!match) throw new Error("Invalid email or password");
-    const { password: _password, ...appUser } = match;
-    localStorage.setItem(SESSION_KEY, JSON.stringify(appUser));
+    const appUser = await authRepository.login(email, password);
     setUser(appUser);
   }
 
-  function logout() {
-    localStorage.removeItem(SESSION_KEY);
+  async function logout() {
+    await authRepository.logout();
     setUser(null);
   }
 

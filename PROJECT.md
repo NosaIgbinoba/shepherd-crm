@@ -6,27 +6,35 @@ more current than any individual conversation.
 
 ## Current phase
 
-**Phase 1: Frontend scaffold with mock data — DONE.**
-Next up: Phase 2, decide and wire the real backend (see "Open decisions").
+**Phase 2: Supabase integration prepped, not yet connected — DONE.**
+Next up: Phase 3 — you create the actual Supabase project and flip it on
+(steps in `SUPABASE_SETUP.md`), then come back for real member data / any
+remaining features (departments, events/RSVPs, join requests are modeled in
+the schema but have no UI yet).
 
 ## Stack decisions (and why)
 
 - **Frontend**: React + Vite + TypeScript, `react-router-dom` for routing.
-- **Backend**: Not Firebase. Target is **Supabase** (Postgres + Auth + Storage),
-  but that integration is deliberately deferred — see Open decisions below.
-- **File/media storage**: mentioned AWS S3 as an option; unresolved, see below.
+- **Backend**: Not Firebase. **Supabase (Postgres + Auth), no S3** — decided
+  2026-07-10. The app talks to Supabase directly via `@supabase/supabase-js`;
+  no custom API server in between. Not yet connected to a real project — see
+  `SUPABASE_SETUP.md` for the connection steps, and "How to run" below for
+  how the app decides mock vs. live.
 - **Version control**: local git only. No GitHub remote/push yet — that's a
   later, explicit step.
 - **Data layer is abstracted on purpose**: `src/lib/db/types.ts` defines a
-  `MemberRepository` interface. `src/lib/db/mockDb.ts` implements it against
-  `localStorage` so the app is fully usable today. When Supabase is wired up,
-  write a `SupabaseDb` implementing the same interface and swap the export in
-  `src/lib/db/index.ts` — no changes needed in pages/components.
-- **Auth is similarly mocked**: `src/lib/auth/AuthContext.tsx` checks
-  credentials against a hardcoded list in `src/lib/auth/mockUsers.ts`
-  (admin@jpd.church / admin123) and stores a session in `localStorage`. This
-  is NOT secure and must be replaced by Supabase Auth (or equivalent) before
-  any real user data or deployment. Treat it as a UI-flow placeholder only.
+  `MemberRepository` interface. Two implementations exist:
+  `src/lib/db/mockDb.ts` (localStorage) and `src/lib/db/supabaseDb.ts`
+  (real Postgres via Supabase). `src/lib/db/index.ts` picks automatically
+  based on whether `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set —
+  no changes needed in pages/components either way.
+- **Auth follows the same pattern**: `src/lib/auth/types.ts` defines
+  `AuthRepository`, implemented by `src/lib/auth/mockAuth.ts`
+  (admin@jpd.church / admin123, NOT secure, placeholder only) and
+  `src/lib/auth/supabaseAuth.ts` (real Supabase Auth + the `public.users`
+  table for org/role). `src/lib/auth/index.ts` picks the same way as the
+  data layer. `AuthContext.tsx` only ever talks to the picked
+  `authRepository`, not to either implementation directly.
 
 ## Data model
 
@@ -48,29 +56,19 @@ rsvps(id, org_id, event_id, member_id, status)
 users(id, org_id, email, role, member_ref)
 ```
 
-TypeScript types mirroring this live in `src/types.ts`.
+TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
+(snake_case columns, same shape) is `supabase/migrations/0001_init.sql`,
+with RLS policies scoping every table to `org_id = auth_org_id()` — the
+direct equivalent of the org-scoped Firestore rules from the original brief.
 
-## Open decisions (need your input before Phase 2)
+## Open decisions
 
-1. **Backend target is ambiguous in the brief**: Supabase (Postgres) was
-   named as the eventual choice, but "AWS S3 bucket and PostgreSQL in the
-   cloud, keep it in the backend for now" was also said. These aren't
-   mutually exclusive (Supabase = managed Postgres + its own object storage,
-   which could replace a separate S3 bucket) but it's not yet confirmed
-   whether:
-   - Supabase Storage is enough, or S3 is wanted specifically (e.g. for
-     existing AWS infra, cost, or a non-Supabase Postgres instance), and
-   - "keep it in the backend for now" means a custom API server sitting
-     between the React app and Postgres, vs. the React app talking to
-     Supabase directly (Supabase's client SDK + RLS policies is the more
-     common pattern and avoids writing/hosting a backend at all).
-2. **Row-level security**: once real Postgres lands, org-scoping must be
-   enforced with Supabase RLS policies keyed on `org_id` (the direct
-   equivalent of the Firestore security rules originally requested) — not
-   just filtered client-side like the current mock does.
-3. **Real auth**: Supabase Auth (email/password to start, matching the
-   original plan) needs to replace `mockUsers.ts` before any real member
-   data is entered.
+- ~~Backend target~~ — resolved 2026-07-10: Supabase, no S3.
+- **No UI yet for**: departments, events/RSVPs, join requests. Schema and
+  types exist for all of them; only `members` has a repository + pages.
+- **No self-serve signup**: admins/members are added via Supabase SQL Editor
+  for now (see `SUPABASE_SETUP.md`). Fine for JPD-only single-admin use;
+  revisit before onboarding org #2.
 
 ## Phase log
 
@@ -79,6 +77,14 @@ TypeScript types mirroring this live in `src/types.ts`.
   seeded with 3 JPD members), mock auth context (1 seeded admin), admin
   login page, member list page (search by name/email), add/edit member form.
   `npx tsc --noEmit` clean. Local git initialized, no remote.
+- **2026-07-10** — Phase 2 complete. Backend decision made: Supabase, no S3.
+  Wrote `supabase/migrations/0001_init.sql` (full schema + org-scoped RLS
+  policies + seed data). Added `supabaseDb.ts` and `supabaseAuth.ts`
+  implementing the existing `MemberRepository`/`AuthRepository` interfaces.
+  `src/lib/db/index.ts` and `src/lib/auth/index.ts` auto-pick mock vs. live
+  based on `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` presence — app still
+  runs on the mock with zero env vars set. Not yet connected to a real
+  project; `SUPABASE_SETUP.md` has the steps for when you're ready.
 
 ## How to run
 
@@ -87,4 +93,7 @@ cd ~/shepherd-crm
 npm run dev
 ```
 
-Log in with `admin@jpd.church` / `admin123`.
+Mock mode (default, no setup): log in with `admin@jpd.church` / `admin123`.
+
+Live Supabase mode: follow `SUPABASE_SETUP.md`, then set `.env.local` and
+restart `npm run dev`.
