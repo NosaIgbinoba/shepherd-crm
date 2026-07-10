@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth/AuthContext";
+import { isSupabaseConfigured } from "../lib/supabase/client";
 
 export function LoginPage() {
   const { user, login } = useAuth();
@@ -62,7 +63,9 @@ export function LoginPage() {
           {submitting ? "Signing in..." : "Sign in"}
         </button>
 
-        <p className="login-hint">Demo admin: admin@jpd.church / admin123</p>
+        {!isSupabaseConfigured && (
+          <p className="login-hint">Demo admin: admin@jpd.church / admin123</p>
+        )}
       </form>
     </div>
   );
