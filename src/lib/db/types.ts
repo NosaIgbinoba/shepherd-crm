@@ -1,4 +1,12 @@
-import type { Member } from "../../types";
+import type {
+  ChurchEvent,
+  Department,
+  JoinRequest,
+  JoinRequestStatus,
+  Member,
+  Rsvp,
+  RsvpStatus,
+} from "../../types";
 
 // Every method is org-scoped by a required orgId, matching the row-level
 // security boundary Supabase/Postgres will enforce later. Swapping MockDb
@@ -13,4 +21,67 @@ export interface MemberRepository {
     data: Omit<Member, "id" | "orgId">
   ): Promise<Member>;
   deleteMember(orgId: string, memberId: string): Promise<void>;
+}
+
+export interface DepartmentRepository {
+  listDepartments(orgId: string): Promise<Department[]>;
+  getDepartment(orgId: string, departmentId: string): Promise<Department | null>;
+  createDepartment(orgId: string, data: Omit<Department, "id" | "orgId">): Promise<Department>;
+  updateDepartment(
+    orgId: string,
+    departmentId: string,
+    data: Omit<Department, "id" | "orgId">
+  ): Promise<Department>;
+  deleteDepartment(orgId: string, departmentId: string): Promise<void>;
+}
+
+export interface NewJoinRequest {
+  departmentId: string;
+  requesterName: string;
+  requesterPhone: string;
+  requesterEmail: string | null;
+}
+
+// createJoinRequest runs unauthenticated from the public /join page (no
+// login) — RLS grants `anon` INSERT only, so admin-side actions
+// (list/approve/reject) are separate methods that require an authenticated
+// session. Approving into a real Member is orchestrated by the caller
+// (create the Member, then call updateJoinRequestStatus with its id) rather
+// than inside this repository, to keep each repository single-purpose.
+export interface JoinRequestRepository {
+  listJoinRequests(orgId: string): Promise<JoinRequest[]>;
+  createJoinRequest(orgId: string, data: NewJoinRequest): Promise<JoinRequest>;
+  updateJoinRequestStatus(
+    orgId: string,
+    requestId: string,
+    status: JoinRequestStatus,
+    memberId: string | null
+  ): Promise<JoinRequest>;
+}
+
+export interface EventRepository {
+  listEvents(orgId: string): Promise<ChurchEvent[]>;
+  getEvent(orgId: string, eventId: string): Promise<ChurchEvent | null>;
+  createEvent(orgId: string, data: Omit<ChurchEvent, "id" | "orgId">): Promise<ChurchEvent>;
+  updateEvent(
+    orgId: string,
+    eventId: string,
+    data: Omit<ChurchEvent, "id" | "orgId">
+  ): Promise<ChurchEvent>;
+  deleteEvent(orgId: string, eventId: string): Promise<void>;
+}
+
+export interface NewRsvp {
+  eventId: string;
+  attendeeName: string;
+  attendeePhone: string;
+  attendeeEmail: string | null;
+  status: RsvpStatus;
+}
+
+// createRsvp runs unauthenticated from the public /rsvp/:eventId page, same
+// anon-INSERT-only pattern as join requests.
+export interface RsvpRepository {
+  listRsvps(orgId: string, eventId: string): Promise<Rsvp[]>;
+  createRsvp(orgId: string, data: NewRsvp): Promise<Rsvp>;
 }

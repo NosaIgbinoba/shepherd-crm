@@ -33,29 +33,42 @@ export interface Department {
   memberIds: string[];
 }
 
+// memberId is populated only when an admin approves the request into a real
+// member record — public submitters (no login) supply requester* fields
+// directly since they may not exist as a Member yet. See PROJECT.md.
 export interface JoinRequest {
   id: string;
   orgId: string;
-  memberId: string;
   departmentId: string;
+  requesterName: string;
+  requesterPhone: string;
+  requesterEmail: string | null;
+  memberId: string | null;
   status: JoinRequestStatus;
+  createdAt: string; // ISO datetime
 }
 
 export interface ChurchEvent {
   id: string;
   orgId: string;
   title: string;
-  date: string; // ISO date
+  date: string; // ISO datetime
   location: string;
-  reminderSchedule: string | null;
+  reminderHoursBefore: number;
 }
 
+// attendeeName/Phone are captured directly at RSVP time (public, no login)
+// rather than requiring a pre-existing Member — see PROJECT.md.
 export interface Rsvp {
   id: string;
   orgId: string;
   eventId: string;
-  memberId: string;
+  attendeeName: string;
+  attendeePhone: string;
+  attendeeEmail: string | null;
+  memberId: string | null;
   status: RsvpStatus;
+  createdAt: string; // ISO datetime
 }
 
 export interface AppUser {

@@ -12,6 +12,14 @@ export function Layout({ children }: { children: ReactNode }) {
           Shepherd CRM
         </Link>
         {user && (
+          <nav className="app-nav">
+            <Link to="/members">Members</Link>
+            <Link to="/departments">Departments</Link>
+            <Link to="/join-requests">Join requests</Link>
+            <Link to="/events">Events</Link>
+          </nav>
+        )}
+        {user && (
           <div className="app-header-actions">
             <span className="app-user-email">{user.email}</span>
             <button onClick={logout} className="btn btn-ghost">

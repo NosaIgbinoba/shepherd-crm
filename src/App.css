@@ -30,6 +30,22 @@
   text-decoration: none;
 }
 
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.app-nav a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.app-nav a:hover {
+  color: var(--color-primary);
+}
+
 .app-header-actions {
   display: flex;
   align-items: center;

@@ -1,4 +1,4 @@
-import type { Member, Organization } from "../../types";
+import type { Department, Member, Organization } from "../../types";
 
 export const SEED_ORG: Organization = {
   id: "jpd",
@@ -41,4 +41,9 @@ export const SEED_MEMBERS: Member[] = [
     departmentIds: [],
     joinedAt: "2026-06-20",
   },
+];
+
+export const SEED_DEPARTMENTS: Department[] = [
+  { id: "d1", orgId: "jpd", name: "Choir", leaderId: "m1", memberIds: ["m1"] },
+  { id: "d2", orgId: "jpd", name: "Ushering", leaderId: null, memberIds: [] },
 ];
