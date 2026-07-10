@@ -19,11 +19,15 @@ join requests (schema exists, no UI yet).
 - **Frontend**: React + Vite + TypeScript, `react-router-dom` for routing.
 - **Backend**: Not Firebase. **Supabase (Postgres + Auth), no S3** — decided
   2026-07-10. The app talks to Supabase directly via `@supabase/supabase-js`;
-  no custom API server in between. Not yet connected to a real project — see
-  `SUPABASE_SETUP.md` for the connection steps, and "How to run" below for
-  how the app decides mock vs. live.
-- **Version control**: local git only. No GitHub remote/push yet — that's a
-  later, explicit step.
+  no custom API server in between. Connected to a real project as of
+  2026-07-10 — see `SUPABASE_SETUP.md` for how it was set up, and
+  "How to run" below for how the app decides mock vs. live.
+- **Version control**: git, pushed to
+  [github.com/NosaIgbinoba/shepherd-crm](https://github.com/NosaIgbinoba/shepherd-crm)
+  as of 2026-07-11 (public repo). Push auth needed a Personal Access Token
+  with the fine-grained **Contents: Read and write** permission — the
+  default "Read" setting 403s on push even with every other permission
+  granted; worth remembering if a token needs regenerating later.
 - **Data layer is abstracted on purpose**: `src/lib/db/types.ts` defines a
   `MemberRepository` interface. Two implementations exist:
   `src/lib/db/mockDb.ts` (localStorage) and `src/lib/db/supabaseDb.ts`
@@ -96,6 +100,12 @@ direct equivalent of the org-scoped Firestore rules from the original brief.
   `admin@jpd.church / admin123` text even in live mode. User manually
   tested login and adding a member in their own browser — both confirmed
   working against the real database.
+- **2026-07-11** — Pushed to GitHub:
+  [github.com/NosaIgbinoba/shepherd-crm](https://github.com/NosaIgbinoba/shepherd-crm)
+  (public). Hit a stored-Keychain-credential mismatch (git was authenticating
+  as a different GitHub account than the repo owner) and then a fine-grained
+  PAT missing **Contents: Read and write** — both resolved. `.env.local`
+  confirmed never committed (`git check-ignore`).
 
 ## How to run
 
