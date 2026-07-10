@@ -6,13 +6,11 @@ more current than any individual conversation.
 
 ## Current phase
 
-**Phase 3: Connected to a real Supabase project — DONE.**
+**Phase 3: Connected to a real Supabase project — DONE, fully verified.**
 Project `fslqsdggabmtysvbcgvi`, migration run, admin user created
 (`admin@jpd.church`, linked `public.users` row with `org_id='jpd'`,
-`role='admin'`), `.env.local` set, app verified loading against it with no
-console errors. **Not yet manually tested**: actually logging in and
-exercising the member list/form against real data — do that next in your
-own browser, since the password never went through this session.
+`role='admin'`), `.env.local` set. User confirmed both login and adding a
+member work end-to-end against the live database.
 Next up: real member data entry, and/or UI for departments, events/RSVPs,
 join requests (schema exists, no UI yet).
 
@@ -95,10 +93,9 @@ direct equivalent of the org-scoped Firestore rules from the original brief.
   URL + publishable key (gitignored, verified via `git check-ignore`).
   Fixed `LoginPage.tsx` to only show the mock demo-credentials hint when
   `isSupabaseConfigured` is false — it was showing stale
-  `admin@jpd.church / admin123` text even in live mode. Verified via
-  headless browser that the app loads against the live project with zero
-  console errors; actual login was left for the user to test manually since
-  the real password wasn't shared into this session.
+  `admin@jpd.church / admin123` text even in live mode. User manually
+  tested login and adding a member in their own browser — both confirmed
+  working against the real database.
 
 ## How to run
 
