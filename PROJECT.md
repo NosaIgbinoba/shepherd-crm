@@ -6,13 +6,13 @@ more current than any individual conversation.
 
 ## Current phase
 
-**Phase 3: Connected to a real Supabase project — DONE, fully verified.**
-Project `fslqsdggabmtysvbcgvi`, migration run, admin user created
-(`admin@jpd.church`, linked `public.users` row with `org_id='jpd'`,
-`role='admin'`), `.env.local` set. User confirmed both login and adding a
-member work end-to-end against the live database.
-Next up: real member data entry, and/or UI for departments, events/RSVPs,
-join requests (schema exists, no UI yet).
+**Phase 4: Departments, join requests, events/RSVP, WhatsApp reminders.**
+Frontend + schema + Edge Function code all written and verified in mock
+mode. **Not yet live**: migrations `0002`/`0003` haven't been run on the
+real Supabase project, and the two Edge Functions aren't deployed or
+scheduled — both need your own action (SQL Editor, and Twilio
+account + Supabase CLI login respectively). See `SUPABASE_SETUP.md` and
+`TWILIO_SETUP.md` for exact steps.
 
 ## Stack decisions (and why)
 
@@ -41,6 +41,34 @@ join requests (schema exists, no UI yet).
   table for org/role). `src/lib/auth/index.ts` picks the same way as the
   data layer. `AuthContext.tsx` only ever talks to the picked
   `authRepository`, not to either implementation directly.
+- **Member access model ("Option A")**: decided 2026-07-11. Only admins
+  log in. Join requests and event RSVPs are **public, no-login forms**
+  (`/join`, `/upcoming` + `/rsvp/:eventId`) — the common pattern for church
+  tools (Planning Center, ChurchTrac work this way). Rejected alternatives:
+  real member self-service accounts (bigger build, matches
+  `users.role='member'` in the schema but not needed for v1) and
+  admin-only with no public surface at all (doesn't satisfy "members
+  request, admins approve"). Consequence: `join_requests`/`rsvps` capture
+  requester identity (`requester_name`/`phone`/`email`,
+  `attendee_name`/`phone`/`email`) directly rather than assuming a
+  pre-existing `Member` row, since public submitters may not have one.
+  `member_id` on both tables is optional, populated only when an admin
+  approves a join request into a real `Member`.
+  **Known limitation**: an existing member using the public `/join` form
+  isn't matched against their existing record — it always creates a new
+  one on approval. No dedupe yet.
+- **Scheduled jobs run as Supabase Edge Functions** (Deno), not Firebase
+  Cloud Functions — decided 2026-07-11, consistent with the earlier
+  Supabase-only backend decision. `supabase/functions/birthday-check`
+  (daily) and `supabase/functions/event-reminder` (hourly) both use the
+  **service role key** (bypasses RLS — there's no logged-in user in a
+  cron job) and a shared Twilio WhatsApp helper
+  (`supabase/functions/_shared/twilio.ts`). `event-reminder` is idempotent
+  via `events.reminder_sent_at`, safe at any cron cadence. Both require
+  phone numbers in **E.164** format (`+2348012345678`) — anything else is
+  skipped, not sent. Twilio integration built against the **WhatsApp
+  Sandbox** (no account existed yet as of this writing) — same code works
+  once a production WhatsApp sender is approved. See `TWILIO_SETUP.md`.
 
 ## Data model
 
@@ -56,25 +84,48 @@ detailed.
 organizations(id, name, address, created_at)
 members(id, org_id, name, phone, email, dob, tags[], department_ids[], joined_at)
 departments(id, org_id, name, leader_id, member_ids[])
-join_requests(id, org_id, member_id, department_id, status)
-events(id, org_id, title, date, location, reminder_schedule)
-rsvps(id, org_id, event_id, member_id, status)
+join_requests(id, org_id, department_id, requester_name, requester_phone,
+              requester_email, member_id?, status, created_at)
+events(id, org_id, title, date, location, reminder_hours_before, reminder_sent_at)
+rsvps(id, org_id, event_id, attendee_name, attendee_phone, attendee_email,
+      member_id?, status, created_at)
 users(id, org_id, email, role, member_ref)
 ```
 
 TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
-(snake_case columns, same shape) is `supabase/migrations/0001_init.sql`,
-with RLS policies scoping every table to `org_id = auth_org_id()` — the
-direct equivalent of the org-scoped Firestore rules from the original brief.
+(snake_case columns, same shape) is spread across three migrations:
+- `0001_init.sql` — original tables + RLS scoping every table to
+  `org_id = auth_org_id()` (the direct equivalent of the org-scoped
+  Firestore rules from the original brief; only applies to authenticated
+  users).
+- `0002_public_flows.sql` — `join_requests`/`rsvps` gain requester/attendee
+  fields and optional `member_id` (see "Member access model" above);
+  `events.reminder_schedule` (free text) replaced with
+  `reminder_hours_before` (integer); new `anon`-role policies: INSERT-only
+  on `join_requests`/`rsvps`, SELECT on `departments`/`events`.
+- `0003_event_reminders.sql` — `events.reminder_sent_at`, so the reminder
+  Edge Function never double-sends.
 
 ## Open decisions
 
 - ~~Backend target~~ — resolved 2026-07-10: Supabase, no S3.
-- **No UI yet for**: departments, events/RSVPs, join requests. Schema and
-  types exist for all of them; only `members` has a repository + pages.
-- **No self-serve signup**: admins/members are added via Supabase SQL Editor
-  for now (see `SUPABASE_SETUP.md`). Fine for JPD-only single-admin use;
+- ~~Departments/join-requests/events/RSVP UI~~ — resolved 2026-07-11, see
+  Phase 4.
+- ~~Member access model~~ — resolved 2026-07-11: public no-login forms
+  (Option A), see "Stack decisions" above.
+- ~~Scheduled jobs platform~~ — resolved 2026-07-11: Supabase Edge
+  Functions + Cron, not Firebase.
+- **No self-serve signup**: admins are added via Supabase SQL Editor for
+  now (see `SUPABASE_SETUP.md`). Fine for JPD-only single-admin use;
   revisit before onboarding org #2.
+- **No dedupe for existing members using `/join`** — see "Member access
+  model" limitation above.
+- **Twilio not yet connected**: no account existed as of Phase 4. Edge
+  Functions are written and deployable, but not deployed, secrets aren't
+  set, and nothing is scheduled. `TWILIO_SETUP.md` has the full checklist.
+- **Timezone handling is naive**: birthday matching and reminder timing
+  both use UTC month/day/hours math with no per-org timezone setting.
+  Fine for a single-timezone congregation; revisit if that changes.
 
 ## Phase log
 
@@ -106,6 +157,22 @@ direct equivalent of the org-scoped Firestore rules from the original brief.
   as a different GitHub account than the repo owner) and then a fine-grained
   PAT missing **Contents: Read and write** — both resolved. `.env.local`
   confirmed never committed (`git check-ignore`).
+- **2026-07-11** — Phase 4 built. Department CRUD with leader/member
+  assignment (admin). Public no-login `/join` form + admin
+  `JoinRequestsPage` approve/reject queue (approve creates a real
+  `Member` + assigns to the department). Admin event CRUD
+  (`EventsListPage`/`EventFormPage`, shows RSVP yes/maybe/no counts) +
+  public `/upcoming` event list + `/rsvp/:eventId` form. Schema updates in
+  `0002_public_flows.sql`/`0003_event_reminders.sql`. Two Supabase Edge
+  Functions written (`birthday-check` daily, `event-reminder` hourly) with
+  a shared Twilio WhatsApp helper — built against the WhatsApp Sandbox
+  since no Twilio account existed yet. Verified the entire new surface
+  end-to-end in mock mode via headless browser (department creation →
+  public join submission → admin approval → real member created → event
+  creation → public RSVP → count reflected on admin list), zero console
+  errors. **Not yet applied/deployed to the live project** — migrations
+  0002/0003 need running, Edge Functions need deploying + scheduling, see
+  `SUPABASE_SETUP.md`/`TWILIO_SETUP.md`.
 
 ## How to run
 
