@@ -8,6 +8,7 @@
 // (those are reported in the response, not retried automatically).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getTwilioConfig, isE164, sendWhatsAppMessage } from "../_shared/twilio.ts";
+import { requireCronSecret } from "../_shared/auth.ts";
 
 interface MemberRow {
   id: string;
@@ -15,7 +16,10 @@ interface MemberRow {
   phone: string;
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const authError = requireCronSecret(req);
+  if (authError) return authError;
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) {

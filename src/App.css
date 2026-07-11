@@ -1,3 +1,11 @@
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
 :root {
   --color-bg: #f7f7f8;
   --color-surface: #ffffff;

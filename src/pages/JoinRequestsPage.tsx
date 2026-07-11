@@ -32,6 +32,14 @@ export function JoinRequestsPage() {
   }
 
   async function handleApprove(request: JoinRequest) {
+    const confirmed = window.confirm(
+      `Approve "${request.requesterName}" (${request.requesterPhone})?\n\n` +
+        "This creates a real member record and — once the newcomer-welcome " +
+        "job runs — sends a WhatsApp message to this phone number. Only " +
+        "approve if you recognize this request as legitimate."
+    );
+    if (!confirmed) return;
+
     setError(null);
     setActioningId(request.id);
     try {

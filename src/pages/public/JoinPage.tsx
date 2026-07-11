@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { departmentsDb, joinRequestsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
+import { useBotGuard } from "../../lib/useBotGuard";
 import type { Department } from "../../types";
 
 const emptyForm = {
@@ -17,6 +18,7 @@ export function JoinPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const { honeypot, setHoneypot, isLikelyBot } = useBotGuard();
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +34,10 @@ export function JoinPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (isLikelyBot()) {
+      setSubmitted(true);
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
@@ -67,6 +73,17 @@ export function JoinPage() {
       <form className="login-form" onSubmit={handleSubmit}>
         <h1>Join a department</h1>
         <p className="login-subtitle">Tell us who you are and where you'd like to serve.</p>
+
+        <input
+          type="text"
+          name="company"
+          value={honeypot}
+          onChange={(e) => setHoneypot(e.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          className="honeypot"
+        />
 
         <label htmlFor="requesterName">Name</label>
         <input
