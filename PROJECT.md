@@ -15,6 +15,15 @@ delivered for both flows, and both are scheduled in production via
   "Known limitations" for the DST caveat)
 - `event-reminder-hourly` — `0 * * * *` UTC
 
+**Phase 5: Frontend deployed publicly — DONE.** Live at
+[shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app),
+connected to the GitHub repo for auto-deploy on every push to `main`.
+`vercel.json` rewrites all paths to `index.html` — without it, direct
+loads of client-side routes like `/upcoming` or `/rsvp/:eventId` 404,
+since Vercel's static file server doesn't know React Router's routes
+exist. `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set as Vercel
+production env vars (separately from local `.env.local`).
+
 Next up: real data entry, or extending departments/join-requests/events
 further (e.g. member-facing polish, dedupe on `/join`).
 
@@ -203,9 +212,21 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   the `events` table (anon-readable) coming back empty; `members` isn't
   anon-readable so that revert relies on the `UPDATE` having run in SQL
   Editor rather than an independent check.
+- **2026-07-11** — Phase 5: deployed the frontend to Vercel. Linked via
+  `npx vercel link` (auto-connected the GitHub repo for deploy-on-push),
+  set `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` as production env vars,
+  deployed with `npx vercel --prod`. First deploy 404'd on any direct
+  route load other than `/` (e.g. `/upcoming`) — added `vercel.json` with
+  a catch-all rewrite to `index.html` so React Router handles routing
+  client-side; redeployed, confirmed 200 + zero console errors via
+  headless browser on both `/` and `/upcoming`.
 
 ## How to run
 
+**Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
+— auto-deploys on every push to `main`.
+
+**Local**:
 ```
 cd ~/shepherd-crm
 npm run dev
