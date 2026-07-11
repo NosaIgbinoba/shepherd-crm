@@ -48,15 +48,13 @@ supabase secrets set \
   TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 ```
 
-`SUPABASE_URL` is auto-provided to Edge Functions. If
-`SUPABASE_SERVICE_ROLE_KEY` isn't already auto-injected in your project,
-also run:
-```bash
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-```
-(Find it in **Project Settings → API → service_role** — treat it like a
-root password. It bypasses RLS entirely, which is exactly why these
-functions need it: there's no logged-in user in a scheduled job.)
+`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected into every
+Edge Function by the platform — don't try to set them yourself, the CLI
+rejects any secret name starting with `SUPABASE_` (reserved) anyway. The
+service role key is treated like a root password: it bypasses RLS
+entirely, which is exactly why these functions need it (there's no
+logged-in user in a scheduled job) — but it also means it should never be
+pasted in plaintext anywhere outside Supabase's own dashboard/CLI.
 
 ## 5. Deploy
 
@@ -64,6 +62,10 @@ functions need it: there's no logged-in user in a scheduled job.)
 supabase functions deploy birthday-check
 supabase functions deploy event-reminder
 ```
+
+Done as of 2026-07-11 — both live at
+`https://fslqsdggabmtysvbcgvi.supabase.co/functions/v1/`. Redeploy the same
+way any time `supabase/functions/**` changes.
 
 ## 6. Test manually before scheduling
 
