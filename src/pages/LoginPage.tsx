@@ -13,7 +13,7 @@ export function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (user) {
-    const redirectTo = (location.state as { from?: string } | null)?.from ?? "/members";
+    const redirectTo = (location.state as { from?: string } | null)?.from ?? "/dashboard";
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -23,7 +23,7 @@ export function LoginPage() {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate("/members", { replace: true });
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {

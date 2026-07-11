@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  LayoutDashboard,
   Users,
   Building2,
   Calendar,
@@ -14,6 +15,7 @@ import { useAuth } from "../lib/auth/AuthContext";
 import { cn } from "../lib/utils";
 
 const nav = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/members", label: "Members", icon: Users },
   { to: "/departments", label: "Departments", icon: Building2 },
   { to: "/join-requests", label: "Join requests", icon: ClipboardCheck },
@@ -22,6 +24,7 @@ const nav = [
 ];
 
 const titles: Record<string, string> = {
+  "/dashboard": "Dashboard",
   "/members": "Members",
   "/departments": "Departments",
   "/join-requests": "Join requests",
@@ -56,7 +59,7 @@ export function Layout({ children }: { children: ReactNode }) {
           mobileOpen ? "flex translate-x-0" : "hidden md:flex"
         )}
       >
-        <div className="flex h-16 items-center gap-2 border-b border-border px-5">
+        <Link to="/dashboard" className="flex h-16 items-center gap-2 border-b border-border px-5">
           <div className="grid size-7 place-items-center rounded-md bg-forest text-[11px] font-bold text-white">
             S
           </div>
@@ -66,7 +69,7 @@ export function Layout({ children }: { children: ReactNode }) {
               Shepherd CRM
             </div>
           </div>
-        </div>
+        </Link>
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {nav.map((item) => {
             const active = location.pathname.startsWith(item.to);

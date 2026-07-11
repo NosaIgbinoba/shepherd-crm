@@ -3,6 +3,7 @@ import { AuthProvider } from "./lib/auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Layout } from "./components/Layout";
 import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
 import { MembersListPage } from "./pages/MembersListPage";
 import { DepartmentsListPage } from "./pages/DepartmentsListPage";
 import { JoinRequestsPage } from "./pages/JoinRequestsPage";
@@ -22,6 +23,16 @@ function App() {
           <Route path="/upcoming" element={<PublicEventsPage />} />
           <Route path="/rsvp/:eventId" element={<RsvpPage />} />
 
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <DashboardPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/members"
             element={
@@ -73,8 +84,8 @@ function App() {
             }
           />
 
-          <Route path="/" element={<Navigate to="/members" replace />} />
-          <Route path="*" element={<Navigate to="/members" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

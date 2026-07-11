@@ -52,6 +52,14 @@ data-fetching/auth/backend logic was explicitly NOT copied; only the UI
 was rebuilt against this app's existing Supabase schema and Edge
 Functions. See "Stack decisions" for the full detail.
 
+**Phase 8: Dashboard page — DONE.** The reference has a Dashboard as its
+landing page; this app didn't. Added `/dashboard` (now the default landing
+route post-login and at `/`) with the reference's stat cards, "This week"
+(birthdays/upcoming events/pending join requests), and "Recent activity"
+sections wired to real data. Its "Newcomer pipeline" drag-and-drop kanban
+was deliberately replaced (per explicit request) with a donut chart
+showing newcomer rate — see "Stack decisions" for the color/chart detail.
+
 Next up: real data entry, or extending departments/join-requests/events
 further (e.g. member-facing polish, dedupe on `/join`).
 
@@ -178,6 +186,23 @@ further (e.g. member-facing polish, dedupe on `/join`).
      Not addressed / accepted for now: no CAPTCHA, no custom login
      brute-force lockout beyond Supabase Auth's platform defaults, no
      IP-based throttling. Revisit if abuse is actually observed.
+- **Dashboard chart**: `recharts` + shadcn's `chart.tsx` wrapper
+  (`npx shadcn add chart` — hit the same `./@/...` alias-resolution glitch
+  as the other shadcn installs, relocated manually). Newcomer-rate donut
+  uses two colors that are **not** the literal `forest`/`amber-clay` hex
+  values used elsewhere in the UI — ran the dataviz skill's
+  `validate_palette.js` and our actual brand hex (`#1c4732`/`#e1791b`)
+  failed the lightness/chroma checks (too dark/desaturated to read as
+  color in a small chart mark). Used lighter/more-saturated variants in
+  the same hue families instead (`#25855b` / `#ec7c0e`, both validated
+  passing). `isAnimationActive={false}` on the `Pie` — recharts' default
+  entrance animation caused a real, reproducible bug: on some render
+  paths the chart would render as visibly blank for the first ~400-800ms
+  and any screenshot/interaction timed during that window looked
+  completely broken, even though the container was correctly sized the
+  whole time. Static rendering avoids that class of flake entirely, which
+  also suits a dashboard widget you revisit often (no need to re-animate
+  every visit).
 
 ## Data model
 
@@ -365,7 +390,31 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   `MemberFormPage`/`DepartmentFormPage`/`EventFormPage`/
   `AnnouncementFormPage` files/routes entirely — fully superseded.
   Verified every single page (admin + public) via headless browser
-  screenshots with zero console errors before committing.
+  screenshots with zero console errors before committing. Also caught a
+  real production-build bug `tsc --noEmit` had missed: `baseUrl` is
+  deprecated in this TS version (fixed by keeping only `paths`), and two
+  `<Th></Th>` usages didn't satisfy a required `children` prop (swapped to
+  plain `<th></th>`) — `npm run build` (what Vercel actually runs) caught
+  both; confirmed the live Vercel deploy succeeded after the fix.
+- **2026-07-11** — Phase 8: added the Dashboard page. Installed
+  `recharts` + shadcn `chart.tsx` for the newcomer-rate donut (replacing
+  the reference's newcomer-pipeline kanban, per explicit request). Ran
+  the dataviz skill's palette validator on our actual brand colors before
+  using them as chart marks — they failed (too dark/desaturated for a
+  small mark) — swapped in lighter/more-saturated same-hue variants that
+  passed. Made `/dashboard` the new default landing route (post-login and
+  `/`), added it as the first nav item, wrapped the sidebar brand mark in
+  a link back to it. Hit and fixed two real bugs during verification: the
+  chart's container collapsed to 0×0 when it was a flex-row child with no
+  explicit width (fixed with `w-56 shrink-0`), and recharts' default
+  entrance animation caused the chart to render blank for the first
+  several hundred ms on some paths — disabled via
+  `isAnimationActive={false}`. (Two other apparent bugs during testing
+  turned out not to be bugs: the join-request bot-guard correctly
+  rejecting instant Playwright-speed form fills, and a stale test
+  locator from before the Phase 7 rewrite.) Verified via headless
+  browser with real populated data (an event, a pending join request)
+  before committing.
 
 ## How to run
 
