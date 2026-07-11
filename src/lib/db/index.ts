@@ -9,7 +9,10 @@ import { mockEvents } from "./mockEvents";
 import { supabaseEvents } from "./supabaseEvents";
 import { mockRsvps } from "./mockRsvps";
 import { supabaseRsvps } from "./supabaseRsvps";
+import { mockAnnouncements } from "./mockAnnouncements";
+import { supabaseAnnouncements } from "./supabaseAnnouncements";
 import type {
+  AnnouncementRepository,
   DepartmentRepository,
   EventRepository,
   JoinRequestRepository,
@@ -35,7 +38,12 @@ export const eventsDb: EventRepository = isSupabaseConfigured ? supabaseEvents :
 
 export const rsvpsDb: RsvpRepository = isSupabaseConfigured ? supabaseRsvps : mockRsvps;
 
+export const announcementsDb: AnnouncementRepository = isSupabaseConfigured
+  ? supabaseAnnouncements
+  : mockAnnouncements;
+
 export type {
+  AnnouncementRepository,
   DepartmentRepository,
   EventRepository,
   JoinRequestRepository,

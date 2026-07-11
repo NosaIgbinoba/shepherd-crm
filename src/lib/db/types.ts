@@ -1,4 +1,5 @@
 import type {
+  Announcement,
   ChurchEvent,
   Department,
   JoinRequest,
@@ -84,4 +85,20 @@ export interface NewRsvp {
 export interface RsvpRepository {
   listRsvps(orgId: string, eventId: string): Promise<Rsvp[]>;
   createRsvp(orgId: string, data: NewRsvp): Promise<Rsvp>;
+}
+
+export interface NewAnnouncement {
+  message: string;
+  targetType: Announcement["targetType"];
+  targetValue: string;
+  scheduledAt: string;
+}
+
+// Admin-only, unlike JoinRequest/Rsvp — announcements have no public
+// submission path. Delivery is handled entirely by the send-announcements
+// Edge Function; this repository only manages the record.
+export interface AnnouncementRepository {
+  listAnnouncements(orgId: string): Promise<Announcement[]>;
+  createAnnouncement(orgId: string, data: NewAnnouncement): Promise<Announcement>;
+  deleteAnnouncement(orgId: string, announcementId: string): Promise<void>;
 }

@@ -17,6 +17,7 @@ export function Layout({ children }: { children: ReactNode }) {
             <Link to="/departments">Departments</Link>
             <Link to="/join-requests">Join requests</Link>
             <Link to="/events">Events</Link>
+            <Link to="/announcements">Announcements</Link>
           </nav>
         )}
         {user && (

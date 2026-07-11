@@ -193,11 +193,14 @@
   margin-top: 0.5rem;
 }
 
-.member-form input {
+.member-form input,
+.member-form select,
+.member-form textarea {
   padding: 0.45rem 0.6rem;
   border: 1px solid var(--color-border);
   border-radius: 6px;
   font-size: 0.95rem;
+  font-family: inherit;
 }
 
 .member-form fieldset {

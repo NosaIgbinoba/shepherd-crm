@@ -10,6 +10,8 @@ import { DepartmentFormPage } from "./pages/DepartmentFormPage";
 import { JoinRequestsPage } from "./pages/JoinRequestsPage";
 import { EventsListPage } from "./pages/EventsListPage";
 import { EventFormPage } from "./pages/EventFormPage";
+import { AnnouncementsListPage } from "./pages/AnnouncementsListPage";
+import { AnnouncementFormPage } from "./pages/AnnouncementFormPage";
 import { JoinPage } from "./pages/public/JoinPage";
 import { PublicEventsPage } from "./pages/public/PublicEventsPage";
 import { RsvpPage } from "./pages/public/RsvpPage";
@@ -91,6 +93,27 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <EventFormPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/announcements"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AnnouncementsListPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/announcements/new"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AnnouncementFormPage />
                 </Layout>
               </ProtectedRoute>
             }

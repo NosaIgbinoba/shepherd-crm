@@ -5,6 +5,7 @@ export type MemberTag = "newcomer" | "worker" | "leader";
 export type JoinRequestStatus = "pending" | "approved" | "rejected";
 export type RsvpStatus = "yes" | "no" | "maybe";
 export type UserRole = "admin" | "member";
+export type AnnouncementTargetType = "tag" | "department";
 
 export interface Organization {
   id: string;
@@ -68,6 +69,20 @@ export interface Rsvp {
   attendeeEmail: string | null;
   memberId: string | null;
   status: RsvpStatus;
+  createdAt: string; // ISO datetime
+}
+
+// targetValue is a MemberTag when targetType is "tag", or a Department id
+// when targetType is "department". sentAt makes delivery idempotent
+// regardless of how often the scheduled function runs.
+export interface Announcement {
+  id: string;
+  orgId: string;
+  message: string;
+  targetType: AnnouncementTargetType;
+  targetValue: string;
+  scheduledAt: string; // ISO datetime
+  sentAt: string | null;
   createdAt: string; // ISO datetime
 }
 
