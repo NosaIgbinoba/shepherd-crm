@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { eventsDb, rsvpsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
 import { useBotGuard } from "../../lib/useBotGuard";
+import { PublicPageShell } from "../../components/PublicPageShell";
 import type { ChurchEvent, RsvpStatus } from "../../types";
 
 const emptyForm = {
@@ -11,6 +12,10 @@ const emptyForm = {
   attendeeEmail: "",
   status: "yes" as RsvpStatus,
 };
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-forest/20";
+const labelClass = "mb-1 block text-xs font-medium text-ink/60";
 
 export function RsvpPage() {
   const { eventId } = useParams();
@@ -60,41 +65,39 @@ export function RsvpPage() {
 
   if (loading) {
     return (
-      <div className="login-page">
-        <p>Loading...</p>
-      </div>
+      <PublicPageShell>
+        <p className="text-sm text-ink/60">Loading...</p>
+      </PublicPageShell>
     );
   }
 
   if (!event) {
     return (
-      <div className="login-page">
-        <div className="login-form">
-          <h1>Event not found</h1>
-        </div>
-      </div>
+      <PublicPageShell>
+        <h1 className="text-2xl font-semibold tracking-tight">Event not found</h1>
+      </PublicPageShell>
     );
   }
 
   if (submitted) {
     return (
-      <div className="login-page">
-        <div className="login-form">
-          <h1>RSVP received</h1>
-          <p className="login-subtitle">Thanks for letting us know about "{event.title}"!</p>
-        </div>
-      </div>
+      <PublicPageShell>
+        <h1 className="text-2xl font-semibold tracking-tight">RSVP received</h1>
+        <p className="mt-1 text-sm text-ink/60">
+          Thanks for letting us know about "{event.title}"!
+        </p>
+      </PublicPageShell>
     );
   }
 
   return (
-    <div className="login-page">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h1>{event.title}</h1>
-        <p className="login-subtitle">
-          {new Date(event.date).toLocaleString()} — {event.location}
-        </p>
+    <PublicPageShell>
+      <h1 className="text-2xl font-semibold tracking-tight">{event.title}</h1>
+      <p className="mt-1 text-sm text-ink/60">
+        {new Date(event.date).toLocaleString()} — {event.location}
+      </p>
 
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-3">
         <input
           type="text"
           name="company"
@@ -106,51 +109,64 @@ export function RsvpPage() {
           className="honeypot"
         />
 
-        <label htmlFor="attendeeName">Name</label>
-        <input
-          id="attendeeName"
-          value={form.attendeeName}
-          onChange={(e) => setForm({ ...form, attendeeName: e.target.value })}
-          required
-        />
+        <label className="block">
+          <span className={labelClass}>Name</span>
+          <input
+            value={form.attendeeName}
+            onChange={(e) => setForm({ ...form, attendeeName: e.target.value })}
+            required
+            className={inputClass}
+          />
+        </label>
 
-        <label htmlFor="attendeePhone">Phone (for WhatsApp reminders)</label>
-        <input
-          id="attendeePhone"
-          value={form.attendeePhone}
-          onChange={(e) => setForm({ ...form, attendeePhone: e.target.value })}
-          required
-        />
+        <label className="block">
+          <span className={labelClass}>Phone (for WhatsApp reminders)</span>
+          <input
+            value={form.attendeePhone}
+            onChange={(e) => setForm({ ...form, attendeePhone: e.target.value })}
+            required
+            className={inputClass}
+          />
+        </label>
 
-        <label htmlFor="attendeeEmail">Email (optional)</label>
-        <input
-          id="attendeeEmail"
-          type="email"
-          value={form.attendeeEmail}
-          onChange={(e) => setForm({ ...form, attendeeEmail: e.target.value })}
-        />
+        <label className="block">
+          <span className={labelClass}>Email (optional)</span>
+          <input
+            type="email"
+            value={form.attendeeEmail}
+            onChange={(e) => setForm({ ...form, attendeeEmail: e.target.value })}
+            className={inputClass}
+          />
+        </label>
 
-        <fieldset>
-          <legend>Will you attend?</legend>
-          {(["yes", "maybe", "no"] as RsvpStatus[]).map((status) => (
-            <label key={status} className="checkbox-label">
-              <input
-                type="radio"
-                name="status"
-                checked={form.status === status}
-                onChange={() => setForm({ ...form, status })}
-              />
-              {status}
-            </label>
-          ))}
-        </fieldset>
+        <div>
+          <div className={labelClass}>Will you attend?</div>
+          <div className="flex flex-wrap gap-2">
+            {(["yes", "maybe", "no"] as RsvpStatus[]).map((status) => (
+              <button
+                type="button"
+                key={status}
+                onClick={() => setForm({ ...form, status })}
+                className={`rounded-full px-3 py-1 text-xs capitalize ${
+                  form.status === status ? "bg-forest text-white" : "bg-neutral-100 text-ink/70"
+                }`}
+              >
+                {status}
+              </button>
+            ))}
+          </div>
+        </div>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={submitting}>
+        <button
+          type="submit"
+          disabled={submitting}
+          className="mt-2 rounded-lg bg-forest px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+        >
           {submitting ? "Sending..." : "Send RSVP"}
         </button>
       </form>
-    </div>
+    </PublicPageShell>
   );
 }

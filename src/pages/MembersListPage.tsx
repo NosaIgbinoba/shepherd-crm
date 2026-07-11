@@ -1,8 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Plus, Search } from "lucide-react";
 import { db } from "../lib/db";
-import type { Member } from "../types";
+import type { Member, MemberTag } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
+import { MemberDrawer } from "../components/MemberDrawer";
+
+const ALL_TAGS: MemberTag[] = ["newcomer", "worker", "leader"];
+
+const tagStyles: Record<MemberTag, string> = {
+  newcomer: "bg-amber-clay/15 text-amber-clay",
+  worker: "bg-forest/10 text-forest",
+  leader: "bg-neutral-100 text-ink/70",
+};
 
 export function MembersListPage() {
   const { user } = useAuth();
@@ -10,81 +19,135 @@ export function MembersListPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [tagFilter, setTagFilter] = useState<MemberTag | "all">("all");
+  const [editing, setEditing] = useState<Member | "new" | null>(null);
+
+  async function refresh() {
+    const result = await db.listMembers(orgId);
+    setMembers(result);
+    setLoading(false);
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    db.listMembers(orgId).then((result) => {
-      if (!cancelled) {
-        setMembers(result);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return members;
-    return members.filter(
-      (m) => m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
-    );
-  }, [members, query]);
+    return members.filter((m) => {
+      if (tagFilter !== "all" && !m.tags.includes(tagFilter)) return false;
+      const q = query.trim().toLowerCase();
+      if (!q) return true;
+      return m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+    });
+  }, [members, query, tagFilter]);
 
   return (
-    <div className="members-page">
-      <div className="members-page-header">
-        <h1>Members</h1>
-        <Link to="/members/new" className="btn btn-primary">
-          Add member
-        </Link>
+    <div>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ink/40" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name or email"
+            className="w-full rounded-lg border border-border bg-white py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-forest/20"
+          />
+        </div>
+        <select
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value as MemberTag | "all")}
+          className="rounded-lg border border-border bg-white px-3 py-2 text-sm"
+        >
+          <option value="all">All tags</option>
+          {ALL_TAGS.map((tag) => (
+            <option key={tag} value={tag} className="capitalize">
+              {tag}
+            </option>
+          ))}
+        </select>
+        <button
+          onClick={() => setEditing("new")}
+          className="inline-flex items-center gap-1 rounded-lg bg-forest px-3 py-2 text-sm text-white hover:bg-forest/90"
+        >
+          <Plus className="size-3.5" /> Add member
+        </button>
       </div>
 
-      <input
-        type="search"
-        placeholder="Search by name or email"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="members-search"
-      />
-
-      {loading ? (
-        <p>Loading members...</p>
-      ) : filtered.length === 0 ? (
-        <p>No members found.</p>
-      ) : (
-        <table className="members-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Tags</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((member) => (
-              <tr key={member.id}>
-                <td>
-                  <Link to={`/members/${member.id}`}>{member.name}</Link>
-                </td>
-                <td>{member.email}</td>
-                <td>{member.phone}</td>
-                <td>
-                  {member.tags.map((tag) => (
-                    <span key={tag} className={`tag tag-${tag}`}>
-                      {tag}
-                    </span>
-                  ))}
-                </td>
-                <td>{member.joinedAt}</td>
+      <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left">
+              <tr>
+                <Th>Name</Th>
+                <Th>Email</Th>
+                <Th>Phone</Th>
+                <Th>Tags</Th>
+                <Th>Joined</Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                    Loading members...
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                    No members match your filters.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((member) => (
+                  <tr
+                    key={member.id}
+                    onClick={() => setEditing(member)}
+                    className="cursor-pointer border-t border-border hover:bg-neutral-50/60"
+                  >
+                    <td className="px-6 py-3 font-medium">{member.name}</td>
+                    <td className="px-6 py-3 text-ink/70">{member.email}</td>
+                    <td className="px-6 py-3 text-ink/70">{member.phone}</td>
+                    <td className="px-6 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {member.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${tagStyles[tag]}`}
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3 text-ink/60">{member.joinedAt}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-border bg-neutral-50/50 px-6 py-3 text-xs text-ink/50">
+          {filtered.length} of {members.length} members
+        </div>
+      </div>
+
+      {editing && (
+        <MemberDrawer
+          member={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={refresh}
+        />
       )}
     </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-6 py-3 text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+      {children}
+    </th>
   );
 }

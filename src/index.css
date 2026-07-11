@@ -1,10 +1,136 @@
-* {
-  box-sizing: border-box;
+@import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Shepherd CRM design system — "Warm Archival Modern", ported from the
+ * shepherdcrm reference UI (~/shepherdcrm). Palette: canvas cream, deep
+ * forest, warm amber-clay, ink. Font: Manrope (loaded in index.html).
+ */
+
+@theme inline {
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-forest: var(--forest);
+  --color-amber-clay: var(--amber-clay);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
-body {
-  margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
-  color: #1a1a1e;
-  background: #f7f7f8;
+:root {
+  --radius: 0.75rem;
+
+  /* Brand */
+  --canvas: oklch(0.976 0.008 85);
+  --surface: oklch(0.99 0.004 85);
+  --ink: oklch(0.20 0.014 260);
+  --forest: oklch(0.36 0.06 160);
+  --amber-clay: oklch(0.68 0.16 55);
+
+  /* Semantic */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--forest);
+  --primary-foreground: oklch(0.985 0.005 85);
+  --secondary: oklch(0.94 0.008 85);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.94 0.008 85);
+  --muted-foreground: oklch(0.48 0.014 260);
+  --accent: oklch(0.94 0.02 55);
+  --accent-foreground: var(--amber-clay);
+  --destructive: oklch(0.55 0.20 27);
+  --destructive-foreground: oklch(0.98 0.005 85);
+  --border: oklch(0.20 0.014 260 / 0.08);
+  --input: oklch(0.20 0.014 260 / 0.12);
+  --ring: var(--forest);
+
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--forest);
+  --sidebar-primary-foreground: oklch(0.985 0.005 85);
+  --sidebar-accent: oklch(0.36 0.06 160 / 0.06);
+  --sidebar-accent-foreground: var(--forest);
+  --sidebar-border: oklch(0.20 0.014 260 / 0.06);
+  --sidebar-ring: var(--forest);
+}
+
+.dark {
+  --canvas: oklch(0.18 0.01 260);
+  --surface: oklch(0.22 0.012 260);
+  --ink: oklch(0.96 0.005 85);
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: oklch(0.5 0.08 160);
+  --primary-foreground: oklch(0.98 0.005 85);
+  --secondary: oklch(0.28 0.012 260);
+  --secondary-foreground: var(--ink);
+  --muted: oklch(0.28 0.012 260);
+  --muted-foreground: oklch(0.7 0.012 260);
+  --accent: oklch(0.32 0.03 55);
+  --accent-foreground: var(--amber-clay);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.12);
+  --ring: oklch(0.5 0.08 160);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  html,
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    margin: 0;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--forest) 15%, transparent);
+  }
 }

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { db, departmentsDb, joinRequestsDb } from "../lib/db";
-import type { Department, JoinRequest } from "../types";
+import type { Department, JoinRequest, JoinRequestStatus } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
+
+const statusStyles: Record<JoinRequestStatus, string> = {
+  pending: "bg-amber-clay/15 text-amber-clay",
+  approved: "bg-forest/10 text-forest",
+  rejected: "bg-neutral-100 text-ink/70",
+};
 
 export function JoinRequestsPage() {
   const { user } = useAuth();
@@ -85,65 +91,87 @@ export function JoinRequestsPage() {
   }
 
   return (
-    <div className="members-page">
-      <div className="members-page-header">
-        <h1>Join requests</h1>
-      </div>
+    <div>
+      {error && <p className="mb-4 text-sm text-destructive">{error}</p>}
 
-      {error && <p className="form-error">{error}</p>}
-
-      {loading ? (
-        <p>Loading join requests...</p>
-      ) : requests.length === 0 ? (
-        <p>No join requests yet.</p>
-      ) : (
-        <table className="members-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Contact</th>
-              <th>Department</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {requests.map((request) => (
-              <tr key={request.id}>
-                <td>{request.requesterName}</td>
-                <td>
-                  {request.requesterPhone}
-                  {request.requesterEmail ? ` / ${request.requesterEmail}` : ""}
-                </td>
-                <td>{departmentName(request.departmentId)}</td>
-                <td>
-                  <span className={`tag tag-${request.status}`}>{request.status}</span>
-                </td>
-                <td>
-                  {request.status === "pending" && (
-                    <div className="form-actions">
-                      <button
-                        className="btn btn-primary"
-                        disabled={actioningId === request.id}
-                        onClick={() => handleApprove(request)}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn btn-ghost"
-                        disabled={actioningId === request.id}
-                        onClick={() => handleReject(request)}
-                      >
-                        Reject
-                      </button>
-                    </div>
-                  )}
-                </td>
+      <div className="overflow-hidden rounded-2xl bg-white ring-1 ring-black/5">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-50 text-left">
+              <tr>
+                <Th>Name</Th>
+                <Th>Contact</Th>
+                <Th>Department</Th>
+                <Th>Status</Th>
+                <Th></Th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                    Loading join requests...
+                  </td>
+                </tr>
+              ) : requests.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                    No join requests yet.
+                  </td>
+                </tr>
+              ) : (
+                requests.map((request) => (
+                  <tr key={request.id} className="border-t border-border">
+                    <td className="px-6 py-3 font-medium">{request.requesterName}</td>
+                    <td className="px-6 py-3 text-ink/70">
+                      {request.requesterPhone}
+                      {request.requesterEmail ? ` / ${request.requesterEmail}` : ""}
+                    </td>
+                    <td className="px-6 py-3 text-ink/70">
+                      {departmentName(request.departmentId)}
+                    </td>
+                    <td className="px-6 py-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${statusStyles[request.status]}`}
+                      >
+                        {request.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                      {request.status === "pending" && (
+                        <div className="flex gap-2">
+                          <button
+                            disabled={actioningId === request.id}
+                            onClick={() => handleApprove(request)}
+                            className="rounded-lg bg-forest px-3 py-1 text-xs text-white hover:bg-forest/90 disabled:opacity-60"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            disabled={actioningId === request.id}
+                            onClick={() => handleReject(request)}
+                            className="rounded-lg border border-border px-3 py-1 text-xs hover:bg-neutral-50 disabled:opacity-60"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+  );
+}
+
+function Th({ children }: { children: React.ReactNode }) {
+  return (
+    <th className="px-6 py-3 text-[10px] font-semibold uppercase tracking-widest text-ink/40">
+      {children}
+    </th>
   );
 }

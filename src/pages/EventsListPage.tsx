@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Plus, Calendar as CalIcon, MapPin } from "lucide-react";
 import { eventsDb, rsvpsDb } from "../lib/db";
 import type { ChurchEvent, RsvpStatus } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
+import { EventDrawer } from "../components/EventDrawer";
 
 type RsvpCounts = Record<RsvpStatus, number>;
 
@@ -12,73 +13,146 @@ export function EventsListPage() {
   const [events, setEvents] = useState<ChurchEvent[]>([]);
   const [counts, setCounts] = useState<Record<string, RsvpCounts>>({});
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<ChurchEvent | "new" | null>(null);
+
+  async function refresh() {
+    const eventList = await eventsDb.listEvents(orgId);
+    setEvents(eventList);
+    const entries = await Promise.all(
+      eventList.map(async (event) => {
+        const rsvps = await rsvpsDb.listRsvps(orgId, event.id);
+        const eventCounts: RsvpCounts = { yes: 0, no: 0, maybe: 0 };
+        rsvps.forEach((rsvp) => {
+          eventCounts[rsvp.status] += 1;
+        });
+        return [event.id, eventCounts] as const;
+      })
+    );
+    setCounts(Object.fromEntries(entries));
+    setLoading(false);
+  }
 
   useEffect(() => {
-    let cancelled = false;
-    eventsDb.listEvents(orgId).then(async (eventList) => {
-      if (cancelled) return;
-      setEvents(eventList);
-      const entries = await Promise.all(
-        eventList.map(async (event) => {
-          const rsvps = await rsvpsDb.listRsvps(orgId, event.id);
-          const eventCounts: RsvpCounts = { yes: 0, no: 0, maybe: 0 };
-          rsvps.forEach((rsvp) => {
-            eventCounts[rsvp.status] += 1;
-          });
-          return [event.id, eventCounts] as const;
-        })
-      );
-      if (cancelled) return;
-      setCounts(Object.fromEntries(entries));
-      setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
+    refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
+  const now = Date.now();
+  const upcoming = events.filter((e) => new Date(e.date).getTime() >= now);
+  const past = events.filter((e) => new Date(e.date).getTime() < now);
+
   return (
-    <div className="members-page">
-      <div className="members-page-header">
-        <h1>Events</h1>
-        <Link to="/events/new" className="btn btn-primary">
-          Add event
-        </Link>
+    <div>
+      <div className="mb-4 flex items-center justify-end">
+        <button
+          onClick={() => setEditing("new")}
+          className="inline-flex items-center gap-1 rounded-lg bg-forest px-3 py-2 text-sm text-white hover:bg-forest/90"
+        >
+          <Plus className="size-3.5" /> New event
+        </button>
       </div>
 
       {loading ? (
-        <p>Loading events...</p>
-      ) : events.length === 0 ? (
-        <p>No events yet.</p>
+        <p className="text-sm text-ink/40">Loading events...</p>
       ) : (
-        <table className="members-table">
-          <thead>
-            <tr>
-              <th>Title</th>
-              <th>Date</th>
-              <th>Location</th>
-              <th>RSVPs (yes / maybe / no)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {events.map((event) => {
-              const c = counts[event.id] ?? { yes: 0, no: 0, maybe: 0 };
-              return (
-                <tr key={event.id}>
-                  <td>
-                    <Link to={`/events/${event.id}`}>{event.title}</Link>
-                  </td>
-                  <td>{new Date(event.date).toLocaleString()}</td>
-                  <td>{event.location}</td>
-                  <td>
-                    {c.yes} / {c.maybe} / {c.no}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="space-y-8">
+          <EventSection
+            title="Upcoming"
+            events={upcoming}
+            counts={counts}
+            onEdit={setEditing}
+          />
+          <EventSection title="Past" events={past} counts={counts} onEdit={setEditing} muted />
+        </div>
+      )}
+
+      {editing && (
+        <EventDrawer
+          event={editing === "new" ? null : editing}
+          onClose={() => setEditing(null)}
+          onSaved={refresh}
+        />
       )}
     </div>
+  );
+}
+
+function EventSection({
+  title,
+  events,
+  counts,
+  onEdit,
+  muted,
+}: {
+  title: string;
+  events: ChurchEvent[];
+  counts: Record<string, RsvpCounts>;
+  onEdit: (event: ChurchEvent) => void;
+  muted?: boolean;
+}) {
+  return (
+    <section>
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-ink/40">
+        {title}
+      </h3>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {events.map((event) => {
+          const c = counts[event.id] ?? { yes: 0, no: 0, maybe: 0 };
+          const total = c.yes + c.maybe + c.no;
+          return (
+            <button
+              key={event.id}
+              onClick={() => onEdit(event)}
+              className={`rounded-xl bg-white p-5 text-left ring-1 ring-black/5 transition hover:ring-forest/30 ${
+                muted ? "opacity-70" : ""
+              }`}
+            >
+              <h4 className="mb-2 font-semibold">{event.title}</h4>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
+                <span className="inline-flex items-center gap-1">
+                  <CalIcon className="size-3" />
+                  {new Date(event.date).toLocaleString(undefined, {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+                {event.location && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="size-3" /> {event.location}
+                  </span>
+                )}
+              </div>
+              {total > 0 && (
+                <div className="mt-4">
+                  <div className="mb-1 flex text-[10px] font-medium text-ink/50">
+                    <span>{c.yes} going</span>
+                    <span className="ml-auto">{total} RSVPs</span>
+                  </div>
+                  <div className="flex h-1.5 overflow-hidden rounded-full bg-neutral-100">
+                    <div className="bg-forest" style={{ width: `${(c.yes / total) * 100}%` }} />
+                    <div
+                      className="bg-amber-clay"
+                      style={{ width: `${(c.maybe / total) * 100}%` }}
+                    />
+                    <div
+                      className="bg-neutral-300"
+                      style={{ width: `${(c.no / total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </button>
+          );
+        })}
+        {events.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-ink/40">
+            None.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

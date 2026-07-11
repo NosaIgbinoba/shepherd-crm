@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { departmentsDb, joinRequestsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
 import { useBotGuard } from "../../lib/useBotGuard";
+import { PublicPageShell } from "../../components/PublicPageShell";
 import type { Department } from "../../types";
 
 const emptyForm = {
@@ -10,6 +11,10 @@ const emptyForm = {
   requesterEmail: "",
   departmentId: "",
 };
+
+const inputClass =
+  "w-full rounded-lg border border-border bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-forest/20";
+const labelClass = "mb-1 block text-xs font-medium text-ink/60";
 
 export function JoinPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -57,23 +62,21 @@ export function JoinPage() {
 
   if (submitted) {
     return (
-      <div className="login-page">
-        <div className="login-form">
-          <h1>Request sent</h1>
-          <p className="login-subtitle">
-            Thanks! An admin will review your request to join and follow up with you.
-          </p>
-        </div>
-      </div>
+      <PublicPageShell>
+        <h1 className="text-2xl font-semibold tracking-tight">Request sent</h1>
+        <p className="mt-1 text-sm text-ink/60">
+          Thanks! An admin will review your request to join and follow up with you.
+        </p>
+      </PublicPageShell>
     );
   }
 
   return (
-    <div className="login-page">
-      <form className="login-form" onSubmit={handleSubmit}>
-        <h1>Join a department</h1>
-        <p className="login-subtitle">Tell us who you are and where you'd like to serve.</p>
+    <PublicPageShell>
+      <h1 className="text-2xl font-semibold tracking-tight">Join a department</h1>
+      <p className="mt-1 text-sm text-ink/60">Tell us who you are and where you'd like to serve.</p>
 
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-3">
         <input
           type="text"
           name="company"
@@ -85,54 +88,66 @@ export function JoinPage() {
           className="honeypot"
         />
 
-        <label htmlFor="requesterName">Name</label>
-        <input
-          id="requesterName"
-          value={form.requesterName}
-          onChange={(e) => setForm({ ...form, requesterName: e.target.value })}
-          required
-        />
+        <label className="block">
+          <span className={labelClass}>Name</span>
+          <input
+            value={form.requesterName}
+            onChange={(e) => setForm({ ...form, requesterName: e.target.value })}
+            required
+            className={inputClass}
+          />
+        </label>
 
-        <label htmlFor="requesterPhone">Phone</label>
-        <input
-          id="requesterPhone"
-          value={form.requesterPhone}
-          onChange={(e) => setForm({ ...form, requesterPhone: e.target.value })}
-          required
-        />
+        <label className="block">
+          <span className={labelClass}>Phone</span>
+          <input
+            value={form.requesterPhone}
+            onChange={(e) => setForm({ ...form, requesterPhone: e.target.value })}
+            required
+            className={inputClass}
+          />
+        </label>
 
-        <label htmlFor="requesterEmail">Email (optional)</label>
-        <input
-          id="requesterEmail"
-          type="email"
-          value={form.requesterEmail}
-          onChange={(e) => setForm({ ...form, requesterEmail: e.target.value })}
-        />
+        <label className="block">
+          <span className={labelClass}>Email (optional)</span>
+          <input
+            type="email"
+            value={form.requesterEmail}
+            onChange={(e) => setForm({ ...form, requesterEmail: e.target.value })}
+            className={inputClass}
+          />
+        </label>
 
-        <label htmlFor="departmentId">Department</label>
-        <select
-          id="departmentId"
-          value={form.departmentId}
-          onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
-          required
-          disabled={loading}
-        >
-          <option value="" disabled>
-            {loading ? "Loading departments..." : "Select a department"}
-          </option>
-          {departments.map((department) => (
-            <option key={department.id} value={department.id}>
-              {department.name}
+        <label className="block">
+          <span className={labelClass}>Department</span>
+          <select
+            value={form.departmentId}
+            onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
+            required
+            disabled={loading}
+            className={inputClass}
+          >
+            <option value="" disabled>
+              {loading ? "Loading departments..." : "Select a department"}
             </option>
-          ))}
-        </select>
+            {departments.map((department) => (
+              <option key={department.id} value={department.id}>
+                {department.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
-        {error && <p className="form-error">{error}</p>}
+        {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={submitting || loading}>
+        <button
+          type="submit"
+          disabled={submitting || loading}
+          className="mt-2 rounded-lg bg-forest px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+        >
           {submitting ? "Sending..." : "Send request"}
         </button>
       </form>
-    </div>
+    </PublicPageShell>
   );
 }

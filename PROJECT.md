@@ -44,12 +44,57 @@ could), a confirm-before-approve step on join requests, and a honeypot +
 timing check on the public forms. All verified live: functions return 401
 without the secret header, 200 with it.
 
+**Phase 7: Design system port from `~/shepherdcrm` reference — DONE.**
+`~/shepherdcrm` is a separate, unrelated local project (a Supabase-based
+reference UI, not part of this app) whose visual design — palette,
+typography, component patterns — was ported into this app 1:1. Its
+data-fetching/auth/backend logic was explicitly NOT copied; only the UI
+was rebuilt against this app's existing Supabase schema and Edge
+Functions. See "Stack decisions" for the full detail.
+
 Next up: real data entry, or extending departments/join-requests/events
 further (e.g. member-facing polish, dedupe on `/join`).
 
 ## Stack decisions (and why)
 
 - **Frontend**: React + Vite + TypeScript, `react-router-dom` for routing.
+  As of 2026-07-11, also **Tailwind CSS v4 + shadcn/ui** (added for the
+  Phase 7 design port — see below). Path alias `@/*` → `./src/*`
+  (`tsconfig.app.json` + `vite.config.ts`).
+- **Design system ("Warm Archival Modern")** — ported 2026-07-11 from
+  `~/shepherdcrm` (reference UI, see Phase 7). Palette defined in OKLCH in
+  `src/index.css` (`@theme inline` block, Tailwind v4's CSS-based
+  theming, no `tailwind.config.ts`): `canvas` (cream background),
+  `surface`/`ink`, `forest` (primary), `amber-clay` (secondary accent).
+  Font: Manrope, loaded via Google Fonts link in `index.html`. The
+  dominant visual signature — used everywhere instead of the shadcn
+  `Card` component — is a hand-written "soft card":
+  `rounded-2xl bg-white p-5 ring-1 ring-black/5`. shadcn primitives
+  installed: button, card, input, select, table, badge, sheet, label,
+  textarea (`src/components/ui/`, `src/lib/utils.ts` for `cn()`).
+  **Known gotcha**: `npx shadcn add` wrote files to a literal `./@/...`
+  directory instead of resolving the path alias to `src/` — had to
+  manually relocate them after each generation.
+- **List+drawer pattern**: Members/Departments/Events/Announcements all
+  follow the reference's pattern — a table or card-grid list page, with
+  create/edit happening in a right-side `Sheet` drawer
+  (`src/components/*Drawer.tsx`) rather than a separate route/page. This
+  replaced the earlier per-entity `*FormPage.tsx` + `/entity/:id` route
+  approach entirely (Join Requests stayed a plain table — no create/edit
+  drawer, since requests are only approved/rejected, not authored by
+  admin). shadcn's default `Sheet` overlay (`bg-black/80`) was dimmed to
+  `bg-black/30` globally in `src/components/ui/sheet.tsx` to match the
+  reference's lighter overlay.
+- **Deliberate deviations from the reference** (matched to this app's
+  actual schema/scope, not copied blindly): no fake/non-functional UI —
+  skipped the reference's decorative (non-functional) header search bar
+  and notification bell, and its `EventDrawer`'s fake "coming soon"
+  reminder toggle was replaced with our real, working
+  `reminderHoursBefore` field. No `stage`/`address`/`notes` fields on
+  Members (not in our schema) — reference has them, we don't invent them.
+  Skipped the reference's calendar-view toggle for Events (list view
+  only) and its email/Google-OAuth signup flow on the login page (this
+  app is single-admin, no self-serve signup).
 - **Backend**: Not Firebase. **Supabase (Postgres + Auth), no S3** — decided
   2026-07-10. The app talks to Supabase directly via `@supabase/supabase-js`;
   no custom API server in between. Connected to a real project as of
@@ -298,6 +343,29 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   `supabase db push --yes` and `supabase secrets set` both required
   explicit user sign-off beyond the earlier general "run it directly"
   authorization — treated as separate, narrower grants each time.
+- **2026-07-11** — Phase 7: ported the visual design from `~/shepherdcrm`
+  (a separate, unrelated reference project) into this app. Explored the
+  reference's structure first (design tokens, shared component library,
+  page layouts) and reported back before changing anything, per explicit
+  request. Installed Tailwind v4 + shadcn/ui (this app had no Tailwind
+  before — decided to adopt it rather than hand-translate into the
+  existing plain CSS, for a truer 1:1 match). Ported the OKLCH palette,
+  Manrope font, and radius scale into `src/index.css`. Rebuilt `AppShell`
+  as `Layout.tsx` (adapted from TanStack Router to `react-router-dom`).
+  Converted Members/Departments/Events/Announcements from separate
+  form-page routes to the reference's list+drawer pattern (new
+  `*Drawer.tsx` components using shadcn `Sheet`); Join Requests stayed a
+  plain table (no drawer, matches its approve/reject-only nature).
+  Restyled login (split-panel) and the three public pages (centered soft
+  card via new `PublicPageShell.tsx`). Deliberately did NOT port: the
+  reference's non-functional header search/notification bell, its fake
+  "reminder coming soon" toggle (kept our real `reminderHoursBefore`
+  field instead), its calendar-view toggle, or its email/Google signup
+  flow (this app is single-admin). Removed `src/App.css` and all
+  `MemberFormPage`/`DepartmentFormPage`/`EventFormPage`/
+  `AnnouncementFormPage` files/routes entirely — fully superseded.
+  Verified every single page (admin + public) via headless browser
+  screenshots with zero console errors before committing.
 
 ## How to run
 
