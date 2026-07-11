@@ -6,13 +6,17 @@ more current than any individual conversation.
 
 ## Current phase
 
-**Phase 4: Departments, join requests, events/RSVP, WhatsApp reminders.**
-Frontend + schema + Edge Function code all written and verified in mock
-mode. **Not yet live**: migrations `0002`/`0003` haven't been run on the
-real Supabase project, and the two Edge Functions aren't deployed or
-scheduled — both need your own action (SQL Editor, and Twilio
-account + Supabase CLI login respectively). See `SUPABASE_SETUP.md` and
-`TWILIO_SETUP.md` for exact steps.
+**Phase 4: Departments, join requests, events/RSVP, WhatsApp reminders —
+DONE, fully live.** Migrations 0002/0003 applied, both Edge Functions
+deployed, Twilio Sandbox connected, real WhatsApp messages confirmed
+delivered for both flows, and both are scheduled in production via
+`pg_cron`:
+- `birthday-check-daily` — `0 8 * * *` UTC (9am Irish Summer Time; see
+  "Known limitations" for the DST caveat)
+- `event-reminder-hourly` — `0 * * * *` UTC
+
+Next up: real data entry, or extending departments/join-requests/events
+further (e.g. member-facing polish, dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -120,12 +124,17 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   revisit before onboarding org #2.
 - **No dedupe for existing members using `/join`** — see "Member access
   model" limitation above.
-- **Twilio not yet connected**: no account existed as of Phase 4. Edge
-  Functions are written and deployable, but not deployed, secrets aren't
-  set, and nothing is scheduled. `TWILIO_SETUP.md` has the full checklist.
-- **Timezone handling is naive**: birthday matching and reminder timing
-  both use UTC month/day/hours math with no per-org timezone setting.
-  Fine for a single-timezone congregation; revisit if that changes.
+- ~~Twilio connection~~ — resolved 2026-07-11: Sandbox connected, both
+  functions deployed and scheduled, real WhatsApp delivery confirmed for
+  both birthday and reminder messages.
+- **Timezone handling is naive**: birthday matching uses UTC month/day, and
+  the cron schedule is a fixed UTC time chosen to match Ireland's *current*
+  offset (UTC+1, Irish Summer Time). `pg_cron` doesn't auto-adjust for DST,
+  so `birthday-check-daily` will quietly drift an hour earlier once Ireland
+  falls back to GMT in autumn. Fine for a single-timezone congregation
+  where an hour of drift twice a year doesn't matter; if it does, nudge
+  `0 8 * * *` → `0 9 * * *` at the autumn changeover and back in spring, or
+  build real timezone handling later.
 
 ## Phase log
 
@@ -173,6 +182,27 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   errors. **Not yet applied/deployed to the live project** — migrations
   0002/0003 need running, Edge Functions need deploying + scheduling, see
   `SUPABASE_SETUP.md`/`TWILIO_SETUP.md`.
+- **2026-07-11** — Phase 4 taken fully live. User applied migrations
+  0002/0003, created a Twilio account + WhatsApp Sandbox, set the
+  `TWILIO_ACCOUNT_SID`/`TWILIO_AUTH_TOKEN`/`TWILIO_WHATSAPP_FROM` secrets,
+  and deployed both functions (`supabase functions deploy`, worked without
+  Docker running). Along the way: `supabase secrets set` rejects any name
+  starting with `SUPABASE_` — `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`
+  are auto-injected already, no manual step needed (see `TWILIO_SETUP.md`,
+  corrected). Test-invoked both functions directly via `curl` before
+  scheduling anything (safe — no real data matched, so nothing sent).
+  Verified `pg_cron` + `pg_net` scheduling actually fires autonomously: set
+  up a temporary every-minute test job against a throwaway event, watched
+  `reminder_sent_at` flip from `null` on its own within a minute, then
+  cleaned up. Sent real test WhatsApp messages for both flows to the
+  user's own phone (after they joined the Twilio Sandbox) — both
+  delivered successfully. Scheduled production cron jobs:
+  `birthday-check-daily` (`0 8 * * *` UTC = 9am Irish Summer Time) and
+  `event-reminder-hourly` (`0 * * * *`), confirmed via
+  `select * from cron.job`. All test data reverted/deleted, confirmed via
+  the `events` table (anon-readable) coming back empty; `members` isn't
+  anon-readable so that revert relies on the `UPDATE` having run in SQL
+  Editor rather than an independent check.
 
 ## How to run
 
