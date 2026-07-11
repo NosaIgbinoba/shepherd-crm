@@ -103,7 +103,7 @@ export function JoinRequestsPage() {
                 <Th>Contact</Th>
                 <Th>Department</Th>
                 <Th>Status</Th>
-                <Th></Th>
+                <th></th>
               </tr>
             </thead>
             <tbody>

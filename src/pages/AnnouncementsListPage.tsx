@@ -65,7 +65,7 @@ export function AnnouncementsListPage() {
                 <Th>Target</Th>
                 <Th>Scheduled</Th>
                 <Th>Status</Th>
-                <Th></Th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
