@@ -1,98 +1,126 @@
-# WhatsApp reminders: Twilio + Edge Function setup
+# WhatsApp automations: Twilio + Edge Function setup
 
-Two Supabase Edge Functions exist and are written, but **not deployed or
-scheduled yet** — that needs your own Twilio account and Supabase CLI login,
-neither of which I can do for you. This is the checklist for when you're
-ready.
+**Status as of 2026-07-11: fully live.** This doc is the reference for how
+it was set up and how to redeploy/rotate things later — not a pending
+checklist anymore.
 
-## 1. Apply the schema updates (if you haven't already)
+Four scheduled WhatsApp flows exist:
+- `birthday-check` (daily) — birthday messages
+- `event-reminder` (hourly) — reminders to everyone who RSVP'd "yes"
+- `newcomer-welcome` (every 15 min) — welcome message for members tagged "newcomer"
+- `send-announcements` (every 5 min) — admin-composed broadcasts to a tag or department
 
-Two migrations landed after `0001_init.sql` and haven't been run on your
-live project yet. In **SQL Editor**, run, in order:
+## 1. Schema
+
+Run, in order, in **SQL Editor** (already done):
 - `supabase/migrations/0002_public_flows.sql`
 - `supabase/migrations/0003_event_reminders.sql`
+- `supabase/migrations/0004_automations.sql`
+- `supabase/migrations/0005_security_hardening.sql`
 
-## 2. Create a Twilio account + WhatsApp Sandbox
+## 2. Twilio account + WhatsApp Sandbox
 
-1. Sign up at [twilio.com](https://twilio.com) (free trial works for this).
-2. Console → **Messaging → Try it out → Send a WhatsApp message**. This
-   activates the **WhatsApp Sandbox** — a shared Twilio number
-   (usually `+14155238886`) you can send/receive WhatsApp messages through
-   immediately, no approval wait.
-3. **Important sandbox limitation**: every recipient (including test
-   numbers, and eventually real church members) must first send the sandbox
-   a WhatsApp message with the join code shown on that page (e.g.
-   `join some-word`) before they can receive anything from it. This is fine
-   for testing but not viable for real congregation-wide birthday/reminder
-   messages — see "Going to production" below.
-4. From the Console home page, copy your **Account SID** and **Auth Token**.
+1. Sign up at [twilio.com](https://twilio.com) (free trial works).
+2. Console → **Messaging → Try it out → Send a WhatsApp message** — activates
+   the **Sandbox** (shared number, usually `+14155238886`), instant, no
+   approval wait.
+3. **Sandbox limitation**: every recipient must first WhatsApp the sandbox
+   the join code shown on that page before they can receive anything from
+   it. Fine for testing, not for real congregation-wide sends — see
+   "Going to production" below.
+4. Copy your **Account SID** and **Auth Token** from the Console home page.
 
-## 3. Install the Supabase CLI and link this project
+## 3. Supabase CLI
 
 ```bash
 brew install supabase/tap/supabase
-supabase login          # opens a browser, your own login
+supabase login
 cd ~/shepherd-crm
 supabase link --project-ref fslqsdggabmtysvbcgvi
 ```
 
-## 4. Set function secrets
-
-These are stored by Supabase, never committed to git, never bundled into
-the frontend (unlike `VITE_...` vars, which *are* public).
+## 4. Secrets
 
 ```bash
 supabase secrets set \
   TWILIO_ACCOUNT_SID=your_account_sid \
   TWILIO_AUTH_TOKEN=your_auth_token \
   TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
+
+supabase secrets set CRON_SECRET=$(openssl rand -hex 24)
 ```
 
-`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected into every
-Edge Function by the platform — don't try to set them yourself, the CLI
-rejects any secret name starting with `SUPABASE_` (reserved) anyway. The
-service role key is treated like a root password: it bypasses RLS
-entirely, which is exactly why these functions need it (there's no
-logged-in user in a scheduled job) — but it also means it should never be
-pasted in plaintext anywhere outside Supabase's own dashboard/CLI.
+`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` are auto-injected — the CLI
+rejects any secret name starting with `SUPABASE_` anyway.
+
+`CRON_SECRET` gates all four functions (`supabase/functions/_shared/auth.ts`)
+— without it, anyone holding the public anon key could invoke them
+directly, each call costing a real Twilio send. Every function requires an
+`x-cron-secret` header matching this value; only the cron job's SQL knows
+it. **If you ever rotate this secret**, you must also update the four
+`net.http_post` calls in the cron jobs (step 7) with the new value, or
+they'll start getting 401s.
 
 ## 5. Deploy
 
 ```bash
 supabase functions deploy birthday-check
 supabase functions deploy event-reminder
+supabase functions deploy newcomer-welcome
+supabase functions deploy send-announcements
 ```
-
-Done as of 2026-07-11 — both live at
-`https://fslqsdggabmtysvbcgvi.supabase.co/functions/v1/`. Redeploy the same
-way any time `supabase/functions/**` changes.
 
 ## 6. Test manually before scheduling
 
-From the Supabase Dashboard: **Edge Functions → birthday-check → Invoke**
-(or `curl` the function URL shown there with your anon key as a Bearer
-token). Check the JSON response — it reports who was messaged/skipped and
-why, per member or attendee.
+```bash
+curl "https://fslqsdggabmtysvbcgvi.supabase.co/functions/v1/birthday-check" \
+  -H "Authorization: Bearer <anon-key>" \
+  -H "x-cron-secret: <your CRON_SECRET>"
+```
 
-Note: for `birthday-check` to have anything to find, a member's `dob` has
-to match today's month/day, and their `phone` has to be in **E.164**
-format (`+2348012345678`, not `555-0101`) — anything else is skipped, not
-sent, since Twilio would just reject it anyway.
+Should return 200 with a JSON summary. Omitting `x-cron-secret` should
+return 401. `birthday-check`/`newcomer-welcome` need a matching `dob`/tag
+and an **E.164** phone (`+2348012345678`, not `555-0101`) to actually send
+anything — anything else is silently skipped.
 
-## 7. Schedule
+## 7. Schedule (pg_cron + pg_net, run in SQL Editor)
 
-Dashboard → **Database → Cron Jobs** → New cron job → type
-**Supabase Edge Function**:
-- `birthday-check` — daily, e.g. `0 12 * * *` (adjust the hour to your
-  timezone's morning; cron runs in UTC)
-- `event-reminder` — hourly, e.g. `0 * * * *` (safe to run this often —
-  `reminder_sent_at` prevents double-sending regardless of cadence)
+Dashboard's Cron Jobs UI works too, but here's the SQL equivalent (what
+was actually used) — each job POSTs to the function URL with both the
+anon key and the cron secret:
+
+```sql
+select cron.schedule(
+  '<job-name>',
+  '<cron-expression>',
+  $$
+  select net.http_post(
+    url := 'https://fslqsdggabmtysvbcgvi.supabase.co/functions/v1/<function-name>',
+    headers := jsonb_build_object(
+      'Authorization', 'Bearer <anon-key>',
+      'x-cron-secret', '<your CRON_SECRET>'
+    )
+  );
+  $$
+);
+```
+
+Current live schedule (`select jobid, jobname, schedule from cron.job;` to
+verify):
+- `birthday-check-daily` — `0 8 * * *` (9am Irish Summer Time; drifts an
+  hour when Ireland falls back to GMT — `pg_cron` doesn't adjust for DST)
+- `event-reminder-hourly` — `0 * * * *`
+- `newcomer-welcome-15min` — `*/15 * * * *`
+- `send-announcements-5min` — `*/5 * * * *`
+
+To change a job's schedule or command: `select cron.unschedule('<job-name>');`
+then `cron.schedule` again — there's no direct "alter".
 
 ## Going to production (real WhatsApp, no sandbox join step)
 
 Apply for a WhatsApp Business sender via Twilio (Console → Messaging →
-Senders → WhatsApp senders). This requires Meta Business verification and
-pre-approved message templates for anything you send outside a 24-hour
-window of the recipient messaging you first — which birthday/reminder
-messages always are. This takes real review time (days, not minutes); the
-sandbox is the right way to build and test everything up to that point.
+Senders → WhatsApp senders). Requires Meta Business verification and
+pre-approved message templates for anything sent outside a 24-hour window
+of the recipient messaging first — which all four flows here always are.
+Takes real review days, not minutes; the sandbox is the right way to build
+and test up to that point.

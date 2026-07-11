@@ -24,6 +24,26 @@ since Vercel's static file server doesn't know React Router's routes
 exist. `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` are set as Vercel
 production env vars (separately from local `.env.local`).
 
+**Phase 6: Automations (announcements + newcomer welcome) — DONE, fully
+live.** Admin can compose a WhatsApp announcement targeted at a member tag
+or a department, scheduled for later. Members tagged "newcomer" (manual
+entry or an approved join request) get an automatic welcome message.
+Migrations 0004/0005 applied, all four Edge Functions deployed and
+scheduled:
+- `birthday-check-daily` — `0 8 * * *` UTC
+- `event-reminder-hourly` — `0 * * * *` UTC
+- `newcomer-welcome-15min` — `*/15 * * * *` UTC
+- `send-announcements-5min` — `*/5 * * * *` UTC
+
+**Phase 6.5: Security hardening — DONE.** Prompted by a direct question
+about rate limiting/brute force/abuse, since the app is now public. Four
+things fixed (see "Stack decisions" for detail): DB-level rate limiting on
+the public forms, a shared-secret gate so only the cron job can invoke
+the WhatsApp functions (previously anyone with the public anon key
+could), a confirm-before-approve step on join requests, and a honeypot +
+timing check on the public forms. All verified live: functions return 401
+without the secret header, 200 with it.
+
 Next up: real data entry, or extending departments/join-requests/events
 further (e.g. member-facing polish, dedupe on `/join`).
 
@@ -82,6 +102,37 @@ further (e.g. member-facing polish, dedupe on `/join`).
   skipped, not sent. Twilio integration built against the **WhatsApp
   Sandbox** (no account existed yet as of this writing) — same code works
   once a production WhatsApp sender is approved. See `TWILIO_SETUP.md`.
+- **Automations reuse the same repository + Edge Function pattern**:
+  `announcements` table + `AnnouncementRepository` (admin-only, unlike
+  join_requests/rsvps — no public submission path) targets either a
+  `MemberTag` or a `Department`; `send-announcements` resolves the
+  audience and messages them. Newcomer welcome reuses the existing
+  `newcomer` tag rather than a new field —
+  `members.newcomer_welcome_sent_at` is the idempotency marker,
+  `newcomer-welcome` fires regardless of how a member got tagged.
+- **Security hardening** — added 2026-07-11 after being asked directly
+  about rate limiting/brute force, since the app is public:
+  1. DB-level rate limiting (`0005_security_hardening.sql`) on
+     `join_requests`/`rsvps` via `BEFORE INSERT` triggers keyed on phone
+     number (3/hour, 5/hour). Enforced in Postgres, not the React app —
+     anyone can call the Supabase REST API directly with the public anon
+     key and skip client-side checks entirely.
+  2. All four Edge Functions require an `x-cron-secret` header matching a
+     `CRON_SECRET` Supabase secret (`supabase/functions/_shared/auth.ts`).
+     Before this, anyone holding the anon key (public in the deployed
+     bundle) could invoke any of them directly — each call costs a real
+     Twilio send.
+  3. Approving a join request now requires an explicit `confirm()`
+     naming the phone number, warning it triggers a real WhatsApp
+     message — guards against rubber-stamping a spam submission into an
+     unwanted message to a stranger.
+  4. Honeypot + minimum-fill-time check (`src/lib/useBotGuard.ts`) on
+     `/join` and `/rsvp/:eventId` — a cheap deterrent for unscripted bots,
+     explicitly *not* the primary defense (that's #1).
+
+     Not addressed / accepted for now: no CAPTCHA, no custom login
+     brute-force lockout beyond Supabase Auth's platform defaults, no
+     IP-based throttling. Revisit if abuse is actually observed.
 
 ## Data model
 
@@ -95,13 +146,16 @@ detailed.
 
 ```
 organizations(id, name, address, created_at)
-members(id, org_id, name, phone, email, dob, tags[], department_ids[], joined_at)
+members(id, org_id, name, phone, email, dob, tags[], department_ids[], joined_at,
+        newcomer_welcome_sent_at)
 departments(id, org_id, name, leader_id, member_ids[])
 join_requests(id, org_id, department_id, requester_name, requester_phone,
               requester_email, member_id?, status, created_at)
 events(id, org_id, title, date, location, reminder_hours_before, reminder_sent_at)
 rsvps(id, org_id, event_id, attendee_name, attendee_phone, attendee_email,
       member_id?, status, created_at)
+announcements(id, org_id, message, target_type, target_value, scheduled_at,
+              sent_at, created_at)
 users(id, org_id, email, role, member_ref)
 ```
 
@@ -220,6 +274,30 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   a catch-all rewrite to `index.html` so React Router handles routing
   client-side; redeployed, confirmed 200 + zero console errors via
   headless browser on both `/` and `/upcoming`.
+- **2026-07-11** — Phase 6: added scheduled announcements (tag- or
+  department-targeted WhatsApp broadcasts) and newcomer welcome messages.
+  New `announcements` table + `AnnouncementRepository`, admin
+  list/form pages, `send-announcements` Edge Function (resolves audience
+  by tag or `department.member_ids`). Newcomer welcome reuses the existing
+  tag; `newcomer-welcome` Edge Function + `members.newcomer_welcome_sent_at`
+  idempotency marker. Verified both in mock mode via headless browser
+  (tag-targeted and department-targeted announcements, cancel), zero
+  console errors.
+- **2026-07-11** — Phase 6.5: security hardening, prompted by a direct
+  question about rate limiting/brute force protection once the app went
+  public. Discussed the actual gaps openly (see "Stack decisions" for the
+  four fixes) rather than assuming they were covered. Deployed via
+  `supabase db push` (migrations 0004+0005 together — Phase 6's deploy had
+  been paused mid-way for this), `supabase secrets set CRON_SECRET=...`,
+  redeployed all four Edge Functions, then rescheduled all four cron jobs
+  with the new `x-cron-secret` header (had to unschedule/reschedule
+  `birthday-check-daily`/`event-reminder-hourly` since `pg_cron` has no
+  "alter job" for changing the command). Verified live via `curl`: every
+  function now 401s without the header and 200s with it. Confirmed final
+  `cron.job` state via a pasted SQL Editor screenshot (jobids 5–8).
+  `supabase db push --yes` and `supabase secrets set` both required
+  explicit user sign-off beyond the earlier general "run it directly"
+  authorization — treated as separate, narrower grants each time.
 
 ## How to run
 
