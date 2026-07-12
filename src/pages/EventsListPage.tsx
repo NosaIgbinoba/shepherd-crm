@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon, MapPin } from "lucide-react";
+import { Plus, Calendar as CalIcon, MapPin, CalendarSync } from "lucide-react";
 import { eventsDb, rsvpsDb } from "../lib/db";
 import type { ChurchEvent, RsvpStatus } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
@@ -107,7 +107,14 @@ function EventSection({
                 muted ? "opacity-70" : ""
               }`}
             >
-              <h4 className="mb-2 font-semibold">{event.title}</h4>
+              <div className="mb-2 flex items-center gap-2">
+                <h4 className="font-semibold">{event.title}</h4>
+                {event.source === "google" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-forest/10 px-2 py-0.5 text-[10px] font-medium text-forest">
+                    <CalendarSync className="size-2.5" /> Synced from Google
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
                 <span className="inline-flex items-center gap-1">
                   <CalIcon className="size-3" />

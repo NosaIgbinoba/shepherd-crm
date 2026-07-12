@@ -8,6 +8,7 @@ import { MembersListPage } from "./pages/MembersListPage";
 import { DepartmentsListPage } from "./pages/DepartmentsListPage";
 import { JoinRequestsPage } from "./pages/JoinRequestsPage";
 import { EventsListPage } from "./pages/EventsListPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { AnnouncementsListPage } from "./pages/AnnouncementsListPage";
 import { HomePage } from "./pages/public/HomePage";
 import { JoinPage } from "./pages/public/JoinPage";
@@ -71,6 +72,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <EventsListPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/calendar"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <CalendarPage />
                 </Layout>
               </ProtectedRoute>
             }

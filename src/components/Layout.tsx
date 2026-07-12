@@ -5,6 +5,7 @@ import {
   Users,
   Building2,
   Calendar,
+  CalendarSync,
   ClipboardCheck,
   Sparkles,
   LogOut,
@@ -20,6 +21,7 @@ const nav = [
   { to: "/departments", label: "Departments", icon: Building2 },
   { to: "/join-requests", label: "Join requests", icon: ClipboardCheck },
   { to: "/events", label: "Events", icon: Calendar },
+  { to: "/calendar", label: "Calendar", icon: CalendarSync },
   { to: "/announcements", label: "Announcements", icon: Sparkles },
 ];
 
@@ -29,6 +31,7 @@ const titles: Record<string, string> = {
   "/departments": "Departments",
   "/join-requests": "Join requests",
   "/events": "Events",
+  "/calendar": "Calendar",
   "/announcements": "Announcements",
 };
 

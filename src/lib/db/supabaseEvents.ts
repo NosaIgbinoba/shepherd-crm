@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client";
-import type { ChurchEvent } from "../../types";
+import type { ChurchEvent, EventSource } from "../../types";
 import type { EventRepository } from "./types";
 
 interface EventRow {
@@ -9,6 +9,8 @@ interface EventRow {
   date: string;
   location: string;
   reminder_hours_before: number;
+  source: EventSource;
+  google_event_id: string | null;
 }
 
 function rowToEvent(row: EventRow): ChurchEvent {
@@ -19,6 +21,8 @@ function rowToEvent(row: EventRow): ChurchEvent {
     date: row.date,
     location: row.location,
     reminderHoursBefore: row.reminder_hours_before,
+    source: row.source,
+    googleEventId: row.google_event_id,
   };
 }
 
@@ -29,6 +33,8 @@ function eventToRow(orgId: string, data: Omit<ChurchEvent, "id" | "orgId">) {
     date: data.date,
     location: data.location,
     reminder_hours_before: data.reminderHoursBefore,
+    source: data.source,
+    google_event_id: data.googleEventId,
   };
 }
 

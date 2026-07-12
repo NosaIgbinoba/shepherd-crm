@@ -50,6 +50,13 @@ export interface JoinRequest {
   createdAt: string; // ISO datetime
 }
 
+export type EventSource = "manual" | "google";
+
+// source/googleEventId track one-way Google Calendar -> CRM sync (Phase 11,
+// see PROJECT.md). Google Calendar is the source of truth for
+// source='google' events — title/date/location are synced in and read-only
+// in the CRM UI; only reminderHoursBefore is admin-editable on them, same
+// as manual events, since Google Calendar has no reminder-hours concept.
 export interface ChurchEvent {
   id: string;
   orgId: string;
@@ -57,6 +64,8 @@ export interface ChurchEvent {
   date: string; // ISO datetime
   location: string;
   reminderHoursBefore: number;
+  source: EventSource;
+  googleEventId: string | null;
 }
 
 // attendeeName/Phone are captured directly at RSVP time (public, no login)

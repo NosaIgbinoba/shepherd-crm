@@ -119,8 +119,75 @@ screenshot — removed, since a product screenshot's whole point is
 legibility. Verified via Playwright in mock mode both times, zero
 console errors each time. Live — see Phase log for commit details.
 
-Next up: extending departments/join-requests/events further (e.g.
-member-facing polish, dedupe on `/join`).
+**Phase 11: Google Calendar import — code-complete, blocked on the
+user's Google Cloud setup, not yet live.** One-way sync only: Google
+Calendar → CRM, never the reverse. The church's Google Calendar is
+**private** and the user chose to keep it that way rather than make it
+public (confirmed explicitly — see "Open decisions"), so this
+authenticates as a **Google service account** via the Calendar API
+(JWT bearer flow, `supabase/functions/_shared/google.ts`, RS256-signed
+with `jose` via esm.sh) rather than fetching a public ICS feed — no
+OAuth user-login, since this is one shared church calendar, not
+per-admin personal calendars. New `supabase/functions/calendar-sync`
+Edge Function (same `x-cron-secret` gate as the other four), calls
+Calendar API `events.list` with `singleEvents=true` so Google expands
+recurring events (e.g. weekly Sunday service) for us — no hand-rolled
+RRULE expansion needed. Schema (`0007_google_calendar_sync.sql`):
+`events.google_event_id` (nullable, unique — upsert key) and
+`events.source` ('manual' | 'google'). Upsert logic on sync: new
+`google_event_id` → insert with `reminder_hours_before` defaulted to
+24 (Google Calendar has no equivalent field); existing → update
+title/date/location but leave `reminder_hours_before` untouched so an
+admin override survives re-syncs, and reset `reminder_sent_at` to null
+if the date actually changed (so a rescheduled event still gets a
+fresh reminder). Skips Google's `cancelled` events on sync.
+**Known limitation, accepted for v1**: does not auto-delete CRM rows
+for events removed from Google — `rsvps.event_id` cascades on delete,
+so an automatic delete on every sync run could silently wipe real
+RSVPs if the feed ever hiccups; stale synced events are left for an
+admin to delete manually instead.
+
+`EventDrawer` now branches on `source`: for `source='google'` events,
+title/date/location render as read-only text (Google owns them) with a
+banner explaining why; `reminderHoursBefore` stays the one editable
+field, same as manual events. `EventsListPage` and the new `/calendar`
+page both show a "Synced from Google" badge on synced events so it's
+clear why those fields are locked. New **`/calendar`** nav item
+(`CalendarSync` icon, distinct from `/events`'s plain `Calendar` icon):
+built as an actual month-grid calendar view (prev/next/Today
+navigation, Monday-start weeks, event chips colored by source) rather
+than another flat list — read as "calendar browsing is a different
+mode of use" from the existing `/events` list, not a duplicate of it.
+Clicking a chip opens the same `EventDrawer`. `/events` continues to
+show both manual and synced events too (same `events` table, no
+filtering added), now with the same source badge for consistency.
+
+Verified via Playwright in mock mode (seeded one manual + one
+Google-sourced event directly into localStorage, since there's no live
+sync to test against yet): both show on `/events` with correct
+badging, the google event's drawer renders read-only fields but still
+saves a reminder-hours change while leaving the title alone, the
+manual event's drawer stays fully editable, `/calendar` renders both
+as correctly colored/positioned chips and opens the drawer on click.
+Zero console errors.
+
+**Not yet live** — blocked on the user completing the Google Cloud
+Console side (create project, enable Calendar API, create a service
+account + JSON key, share the calendar with its email as "See all
+event details"). Have the Calendar ID already
+(`c_509854ef...@group.calendar.google.com`, ends
+`...dbcb4f3d1d4fddd1538a20fed3b195d@group.calendar.google.com`).
+Once the service account email + private key arrive, remaining steps:
+`supabase secrets set` for `GOOGLE_SERVICE_ACCOUNT_EMAIL`/
+`GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`/`GOOGLE_CALENDAR_ID`, `supabase db
+push` for `0007`, deploy `calendar-sync`, schedule
+`calendar-sync-hourly` via `pg_cron` (same pattern as the other four
+jobs), test-invoke via `curl` before scheduling, commit + push the
+frontend.
+
+Next up: finish Phase 11 once Google Cloud setup lands, or extending
+departments/join-requests/events further (e.g. member-facing polish,
+dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -280,7 +347,8 @@ members(id, org_id, name, phone, email, dob, tags[], department_ids[], joined_at
 departments(id, org_id, name, leader_id, member_ids[])
 join_requests(id, org_id, department_id, requester_name, requester_phone,
               requester_email, dob, member_id?, status, created_at)
-events(id, org_id, title, date, location, reminder_hours_before, reminder_sent_at)
+events(id, org_id, title, date, location, reminder_hours_before, reminder_sent_at,
+       google_event_id?, source)
 rsvps(id, org_id, event_id, attendee_name, attendee_phone, attendee_email,
       member_id?, status, created_at)
 announcements(id, org_id, message, target_type, target_value, scheduled_at,
@@ -305,6 +373,9 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   backfilled to a sentinel for any pre-existing rows, then set `not null`
   — required for the point of the field (immediate birthday-automation
   coverage), safe regardless of current row count.
+- `0007_google_calendar_sync.sql` (Phase 11) — `events.google_event_id`
+  (nullable, unique — sync upsert key) and `events.source` ('manual' |
+  'google', default 'manual').
 
 ## Open decisions
 
@@ -323,12 +394,21 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
 - ~~Phase 9 not yet live~~ — resolved 2026-07-12: `0006_join_dob.sql`
   applied via `supabase db push`, frontend pushed to `main` (Vercel
   auto-deploy). Confirmed via `supabase migration list`.
-- **Phase 10 not yet live**: `HomePage` at `/` and the `*` → `/` catch-all
-  change are code-complete but not yet committed/pushed. Deploy before
-  relying on `/` as a real public landing page.
+- ~~Phase 10 not yet live~~ — resolved 2026-07-12: committed, pushed,
+  live via Vercel auto-deploy (see Phase log for both commits).
 - ~~Twilio connection~~ — resolved 2026-07-11: Sandbox connected, both
   functions deployed and scheduled, real WhatsApp delivery confirmed for
   both birthday and reminder messages.
+- **Google Calendar sync method**: resolved 2026-07-12 — the church's
+  calendar is private and the user explicitly chose to keep it that way
+  (offered making it public for a simpler ICS-feed sync; declined) —
+  using a Google service account + Calendar API instead. See Phase 11.
+- **Phase 11 not yet live**: blocked on the user completing Google
+  Cloud Console setup (service account + sharing the calendar with it).
+  See Phase 11 for the exact remaining steps once credentials arrive.
+- **No auto-delete for events removed from Google Calendar** (Phase 11):
+  accepted for v1 since deleting cascades to `rsvps`. Revisit if stale
+  synced events become a real annoyance.
 - **Timezone handling is naive**: birthday matching uses UTC month/day, and
   the cron schedule is a fixed UTC time chosen to match Ireland's *current*
   offset (UTC+1, Irish Summer Time). `pg_cron` doesn't auto-adjust for DST,
@@ -564,6 +644,36 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   renders all 4 cards, join/RSVP links and the Features nav anchor still
   work, zero console errors; also re-checked dark mode — the light
   screenshot reads fine as a framed card against the dark canvas.
+- **2026-07-12** — Phase 11 (code side): one-way Google Calendar import.
+  Asked before building whether the church calendar was public — it's
+  private, and offered making it public for a simpler ICS-feed sync;
+  user chose to keep it private and use a service account instead.
+  Got the Calendar ID from "Integrate calendar" in the calendar's
+  settings; still waiting on the user to create the actual Google Cloud
+  service account and share the calendar with it (walked them through
+  the exact console steps). Built everything not blocked on those
+  credentials: `0007_google_calendar_sync.sql`
+  (`google_event_id`/`source`), `ChurchEvent` type additions,
+  `supabaseEvents.ts` row mapping, `EventDrawer` read-only handling for
+  `source='google'` (banner + read-only title/date/location, reminder
+  hours stays editable), a "Synced from Google" badge on `EventsListPage`
+  cards, and a new `/calendar` month-grid view (`CalendarPage.tsx`,
+  Monday-start weeks, prev/next/Today nav, colored event chips, click
+  to open `EventDrawer`) — deliberately a real calendar view rather than
+  another flat list, to match "a different mode of use" from `/events`.
+  Wrote the sync Edge Function (`supabase/functions/calendar-sync`) and
+  its Google auth helper (`_shared/google.ts` — RS256 JWT bearer flow via
+  `jose`, `singleEvents=true` so Google expands recurring events for us).
+  Verified the UI via Playwright in mock mode by seeding one manual and
+  one `source='google'` event directly into localStorage (no live sync
+  exists yet to test against): both list correctly with right badging,
+  the google event's drawer saves a reminder-hours change while title
+  stays locked and unchanged, `/calendar` renders and colors both chips
+  correctly and opens the drawer on click. Zero console errors.
+  **Not deployed** — no migration push, no secrets set, no function
+  deploy, no cron schedule, nothing committed — genuinely blocked on the
+  user's Google Cloud Console steps, unlike previous phases' "built but
+  not yet pushed" state.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
