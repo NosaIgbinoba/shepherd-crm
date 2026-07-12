@@ -9,6 +9,7 @@ import { DepartmentsListPage } from "./pages/DepartmentsListPage";
 import { JoinRequestsPage } from "./pages/JoinRequestsPage";
 import { EventsListPage } from "./pages/EventsListPage";
 import { AnnouncementsListPage } from "./pages/AnnouncementsListPage";
+import { HomePage } from "./pages/public/HomePage";
 import { JoinPage } from "./pages/public/JoinPage";
 import { PublicEventsPage } from "./pages/public/PublicEventsPage";
 import { RsvpPage } from "./pages/public/RsvpPage";
@@ -18,6 +19,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/join" element={<JoinPage />} />
           <Route path="/upcoming" element={<PublicEventsPage />} />
@@ -84,8 +86,7 @@ function App() {
             }
           />
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

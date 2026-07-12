@@ -60,27 +60,60 @@ sections wired to real data. Its "Newcomer pipeline" drag-and-drop kanban
 was deliberately replaced (per explicit request) with a donut chart
 showing newcomer rate — see "Stack decisions" for the color/chart detail.
 
-**Phase 9: DOB capture + department-scoped join links — DONE (code), not
-yet deployed live.** Superseded an earlier department-lead-role idea:
-WhatsApp groups already handle department communication, so the actual
-gap was smaller — getting group-chat members into the CRM so they're
-covered by the existing birthday automation, not a new in-app role.
-Added a required `dob` field to `join_requests` (migration
-`0006_join_dob.sql`) that flows straight into the created `Member` on
-approval — no more `dob: null` backfill needed. Added `?department=<id>`
-support on `/join` (pre-selects and locks the department), and a
-shareable-link "Copy" control in `DepartmentDrawer` (admin can grab
+**Phase 9: DOB capture + department-scoped join links — DONE, fully
+live.** Superseded an earlier department-lead-role idea: WhatsApp groups
+already handle department communication, so the actual gap was smaller —
+getting group-chat members into the CRM so they're covered by the
+existing birthday automation, not a new in-app role. Added a required
+`dob` field to `join_requests` (migration `0006_join_dob.sql`) that flows
+straight into the created `Member` on approval — no more `dob: null`
+backfill needed. Added `?department=<id>` support on `/join`
+(pre-selects and locks the department), and a shareable-link "Copy"
+control in `DepartmentDrawer` (admin can grab
 `.../join?department=<id>` per department to paste into that
 department's WhatsApp group). No new roles, logins, or dashboards.
 Verified end-to-end via Playwright in mock mode (department link →
 locked `/join` form → DOB required → submit → admin approve → member's
-`dob` matches submitted value), zero console errors. **Migration not yet
-applied to the live Supabase project; frontend not yet deployed** — see
-"Open decisions".
+`dob` matches submitted value), zero console errors. Migration applied
+to the live Supabase project (`supabase db push`) and frontend deployed
+(pushed to `main`, Vercel auto-deploy).
 
-Next up: apply `0006_join_dob.sql` live and deploy, or extending
-departments/join-requests/events further (e.g. member-facing polish,
-dedupe on `/join`).
+**Phase 10: public homepage — DONE, code-complete, not yet deployed
+live.** Previously "/" just redirected straight to `/dashboard` — no
+public marketing/landing page existed. Ported a hero-section design
+(sourced from 21st.dev, originally a Next.js/generic-SaaS template) into
+`src/pages/public/HomePage.tsx`, adapted to this app: `next/link` →
+`react-router-dom` `Link`, the template's generic gradient wordmark
+swapped for the app's real brand mark (same forest "S" badge + "Shepherd
+CRM / JPD Church" lockup used in `Layout.tsx`'s sidebar and
+`LoginPage.tsx`), nav links pointed at real routes (`/join`,
+`/upcoming`), header CTA reduced to just "Sign in" (no "Sign up" — this
+app has no self-serve signup, see "Member access model"). Copy rewritten
+for the church context (headline, subtext, announcement pill all
+reference joining a department / WhatsApp reminders instead of generic
+SaaS marketing language). Deliberately dropped two sections from the
+source template that had no real equivalent here: the fake product
+"app screenshot in a browser frame" mockup and the fake customer-logo
+trust bar (Nvidia/GitHub/Nike/etc.) — consistent with the Phase 7
+"no fake/non-functional UI" precedent. `/` now renders `HomePage`
+directly (redirects to `/dashboard` if already logged in, same pattern
+as `LoginPage`); the catch-all `*` route now redirects to `/` instead of
+`/dashboard`, since `/` is a real public page now, not just a redirect
+stub. Added `framer-motion` (for entrance animations) and
+`src/components/ui/animated-group.tsx` (adapted from the source
+template, `preset` prop dropped since nothing in this app uses it).
+Verified via Playwright in mock mode: headline renders, both hero CTAs
+and the header "Sign in" button navigate to the right routes, an
+already-logged-in visit to `/` redirects to `/dashboard`, mobile menu
+opens and shows both nav links, zero console errors; also visually
+checked light and dark mode via screenshot — palette (forest primary,
+cream/ink canvas) carries through correctly in both since the component
+uses the app's existing semantic Tailwind tokens throughout rather than
+hardcoded colors. **Not yet deployed** — code-complete only as of this
+entry; needs a commit + push to go live.
+
+Next up: deploy Phase 10, or extending departments/join-requests/events
+further (e.g. member-facing polish, dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -280,12 +313,12 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   revisit before onboarding org #2.
 - **No dedupe for existing members using `/join`** — see "Member access
   model" limitation above.
-- **Phase 9 not yet live**: `0006_join_dob.sql` needs `supabase db push`
-  against the real project, and the frontend needs a deploy (Vercel
-  auto-deploys on push to `main`, so pushing to GitHub covers it). Do
-  both before sharing any department join link with a real WhatsApp
-  group — until then the live site doesn't have the DOB field or the
-  `?department=` lock.
+- ~~Phase 9 not yet live~~ — resolved 2026-07-12: `0006_join_dob.sql`
+  applied via `supabase db push`, frontend pushed to `main` (Vercel
+  auto-deploy). Confirmed via `supabase migration list`.
+- **Phase 10 not yet live**: `HomePage` at `/` and the `*` → `/` catch-all
+  change are code-complete but not yet committed/pushed. Deploy before
+  relying on `/` as a real public landing page.
 - ~~Twilio connection~~ — resolved 2026-07-11: Sandbox connected, both
   functions deployed and scheduled, real WhatsApp delivery confirmed for
   both birthday and reminder messages.
@@ -466,8 +499,33 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   contexts) — wrapped in try/catch with a fallback message. Confirmed
   full flow (department link → locked form → required DOB → submit →
   admin approve → member's `dob` matches) end-to-end, zero console
-  errors. **Not yet applied to the live Supabase project or deployed** —
-  code-complete only as of this entry.
+  errors. Applied to the live Supabase project (`supabase db push`) and
+  pushed to `main` (commit `72747bb`), confirmed via
+  `supabase migration list`.
+- **2026-07-12** — Phase 10: added a real public homepage at `/` —
+  previously it just redirected straight to `/dashboard`. Ported a
+  hero-section design the user liked from 21st.dev (Next.js/generic-SaaS
+  template) into `src/pages/public/HomePage.tsx`: swapped `next/link` for
+  `react-router-dom`, replaced the template's generic wordmark with the
+  app's real brand mark, pointed nav links at real routes (`/join`,
+  `/upcoming`), cut the header CTA to just "Sign in" (no self-serve
+  signup in this app), and rewrote all copy for the church context.
+  Dropped two template sections that had no real equivalent — a fake
+  product-screenshot mockup and a fake customer-logo trust bar — per the
+  Phase 7 "no fake/non-functional UI" precedent, rather than inventing
+  placeholder content for them. `/` redirects to `/dashboard` if already
+  logged in (mirrors `LoginPage`'s pattern); `*` catch-all now goes to
+  `/` instead of `/dashboard`. Added `framer-motion` +
+  `src/components/ui/animated-group.tsx` (adapted from the source,
+  unused `preset` prop system dropped). No color values were
+  hardcoded — the ported component uses the app's existing semantic
+  Tailwind tokens (`bg-primary`, `text-muted-foreground`, etc.)
+  throughout, so the "Warm Archival Modern" palette carried over
+  automatically; verified by screenshotting both light and dark mode.
+  Verified via Playwright in mock mode: CTAs and header "Sign in" link to
+  the right routes, logged-in visit to `/` redirects to `/dashboard`,
+  mobile menu opens correctly, zero console errors. **Not yet
+  committed/pushed** — code-complete only as of this entry.
 
 ## How to run
 
