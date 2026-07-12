@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarSync } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CalendarSync } from "lucide-react";
 import { eventsDb } from "../lib/db";
 import type { ChurchEvent } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
@@ -64,11 +64,29 @@ export function CalendarPage() {
     setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + offset, 1));
   }
 
+  function goToYear(offset: number) {
+    setCursor((prev) => new Date(prev.getFullYear() + offset, prev.getMonth(), 1));
+  }
+
+  function handleJumpTo(value: string) {
+    // value is "YYYY-MM" from the native month picker.
+    const [year, month] = value.split("-").map(Number);
+    if (!year || !month) return;
+    setCursor(new Date(year, month - 1, 1));
+  }
+
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className="text-lg font-semibold">{monthLabel}</h3>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => goToYear(-1)}
+            aria-label="Previous year"
+            className="grid size-8 place-items-center rounded-lg text-ink/60 hover:bg-neutral-100"
+          >
+            <ChevronsLeft className="size-4" />
+          </button>
           <button
             onClick={() => goToMonth(-1)}
             aria-label="Previous month"
@@ -89,6 +107,22 @@ export function CalendarPage() {
           >
             <ChevronRight className="size-4" />
           </button>
+          <button
+            onClick={() => goToYear(1)}
+            aria-label="Next year"
+            className="grid size-8 place-items-center rounded-lg text-ink/60 hover:bg-neutral-100"
+          >
+            <ChevronsRight className="size-4" />
+          </button>
+          <label className="ml-1 flex items-center">
+            <span className="sr-only">Jump to month</span>
+            <input
+              type="month"
+              value={`${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`}
+              onChange={(e) => handleJumpTo(e.target.value)}
+              className="rounded-lg border border-border bg-canvas px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-forest/20"
+            />
+          </label>
         </div>
       </div>
 

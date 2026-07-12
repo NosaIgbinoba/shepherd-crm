@@ -670,10 +670,38 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   the google event's drawer saves a reminder-hours change while title
   stays locked and unchanged, `/calendar` renders and colors both chips
   correctly and opens the drawer on click. Zero console errors.
-  **Not deployed** — no migration push, no secrets set, no function
-  deploy, no cron schedule, nothing committed — genuinely blocked on the
-  user's Google Cloud Console steps, unlike previous phases' "built but
-  not yet pushed" state.
+  Committed and pushed (commit `57e7fd0`) — safe to ship ahead of the
+  migration since every `source`/`google_event_id` check degrades to
+  "treat as manual" if those columns don't exist yet, no crash.
+- **2026-07-12** — Phase 11 continued: got the Google Cloud service
+  account created (`shepherd-crm-calendar-sync@double-gamma-399709.iam.gserviceaccount.com`)
+  and its JSON key. Set all three secrets
+  (`GOOGLE_SERVICE_ACCOUNT_EMAIL`/`GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`/
+  `GOOGLE_CALENDAR_ID`) via `supabase secrets set --env-file` (temp file
+  deleted immediately after) — confirmed via `supabase secrets list`.
+  Hit the anticipated sharing blocker: the user only has viewer-level
+  access to the calendar under their own account (shared by someone
+  else), which can't manage a calendar's sharing list — only the actual
+  owner/manager can add the service account. User has messaged that
+  person; sync deploy (`db push`, function deploy, cron schedule) is on
+  hold until the share goes through. Also explained, when asked, why
+  this uses a service account instead of the user's own Google login:
+  matches their original explicit instruction not to build a
+  per-admin OAuth flow, and a service account isn't tied to any one
+  person's account lifecycle (password/2FA changes, revoked sessions,
+  someone leaving the church) — acknowledged the honest trade-off that
+  OAuth against the user's own account would've reused access they
+  already have and skipped this sharing step entirely, at the cost of
+  building a full OAuth flow and a sync that's fragile to that one
+  account's status. User chose to stick with the service account.
+  While waiting, improved `/calendar` navigation per explicit feedback
+  that month-by-month stepping was too slow to browse far into the
+  future/past: added year-jump buttons (`ChevronsLeft`/`ChevronsRight`)
+  flanking the existing month buttons, plus a native `<input
+  type="month">` picker for jumping directly to any month/year.
+  Verified via Playwright (year jumps forward/back 12 months correctly,
+  Today returns to the current month, the picker jumps straight to an
+  arbitrary month 2 years out), zero console errors.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
