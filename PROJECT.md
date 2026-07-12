@@ -89,31 +89,38 @@ CRM / JPD Church" lockup used in `Layout.tsx`'s sidebar and
 `LoginPage.tsx`), nav links pointed at real routes (`/join`,
 `/upcoming`), header CTA reduced to just "Sign in" (no "Sign up" — this
 app has no self-serve signup, see "Member access model"). Copy rewritten
-for the church context (headline, subtext, announcement pill all
-reference joining a department / WhatsApp reminders instead of generic
-SaaS marketing language). Deliberately dropped two sections from the
-source template that had no real equivalent here: the fake product
-"app screenshot in a browser frame" mockup and the fake customer-logo
-trust bar (Nvidia/GitHub/Nike/etc.) — consistent with the Phase 7
-"no fake/non-functional UI" precedent. `/` now renders `HomePage`
-directly (redirects to `/dashboard` if already logged in, same pattern
-as `LoginPage`); the catch-all `*` route now redirects to `/` instead of
+for the church context, and revised once more after the user pointed
+out the first pass read as a member-facing hub rather than a real
+homepage: hero CTAs now lead with the product itself ("Sign in to your
+dashboard" / "See how it works" → `#preview`), join/RSVP demoted to a
+small text line rather than dropped, a `#preview` section shows a real
+screenshot of the populated `/dashboard` page (not a mockup — seeded
+realistic mock data, logged in, screenshotted), and a `#features`
+section with 4 cards (Member records / Departments / Events & RSVPs /
+WhatsApp automations, using the same lucide icons as the sidebar nav)
+spells out what the product does. Dropped the source template's fake
+customer-logo trust bar (Nvidia/GitHub/Nike/etc.) — no real equivalent —
+consistent with the Phase 7 "no fake/non-functional UI" precedent; the
+real dashboard screenshot replaces what would've been the template's
+fake product-screenshot mockup. `/` now renders `HomePage` directly
+(redirects to `/dashboard` if already logged in, same pattern as
+`LoginPage`); the catch-all `*` route now redirects to `/` instead of
 `/dashboard`, since `/` is a real public page now, not just a redirect
 stub. Added `framer-motion` (for entrance animations) and
 `src/components/ui/animated-group.tsx` (adapted from the source
-template, `preset` prop dropped since nothing in this app uses it).
-Verified via Playwright in mock mode: headline renders, both hero CTAs
-and the header "Sign in" button navigate to the right routes, an
-already-logged-in visit to `/` redirects to `/dashboard`, mobile menu
-opens and shows both nav links, zero console errors; also visually
-checked light and dark mode via screenshot — palette (forest primary,
-cream/ink canvas) carries through correctly in both since the component
-uses the app's existing semantic Tailwind tokens throughout rather than
-hardcoded colors. **Not yet deployed** — code-complete only as of this
-entry; needs a commit + push to go live.
+template, `preset` prop dropped since nothing in this app uses it). No
+hardcoded colors — the app's existing semantic Tailwind tokens carry the
+"Warm Archival Modern" palette through automatically in both light and
+dark mode, verified by screenshot both times. One real bug caught and
+fixed along the way: the source template's fade-to-background gradient
+overlay was sized to the whole preview container rather than just its
+edge, washing out roughly the bottom two-thirds of the real dashboard
+screenshot — removed, since a product screenshot's whole point is
+legibility. Verified via Playwright in mock mode both times, zero
+console errors each time. Live — see Phase log for commit details.
 
-Next up: deploy Phase 10, or extending departments/join-requests/events
-further (e.g. member-facing polish, dedupe on `/join`).
+Next up: extending departments/join-requests/events further (e.g.
+member-facing polish, dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -524,10 +531,39 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   automatically; verified by screenshotting both light and dark mode.
   Verified via Playwright in mock mode: CTAs and header "Sign in" link to
   the right routes, logged-in visit to `/` redirects to `/dashboard`,
-  mobile menu opens correctly, zero console errors. **Not yet
-  committed/pushed** — code-complete only as of this entry.
-
-## How to run
+  mobile menu opens correctly, zero console errors. Committed and pushed
+  (commit `9a829d1`), live via Vercel auto-deploy.
+- **2026-07-12** — Phase 10 revision: the first version read as a
+  member-facing hub (its primary CTAs were "Join a department" /
+  "Upcoming events"), but the actual goal is to show off the product
+  itself to first-time visitors — the user pointed out it "doesn't
+  really make sense for a homepage" without that. Rewrote the hero
+  copy/CTAs around the product ("Sign in to your dashboard" primary,
+  "See how it works" scrolls to a `#preview` anchor); demoted
+  join/RSVP to a small text line below the CTAs
+  ("Part of JPD Church? Join a department or check upcoming events.")
+  rather than dropping them, since real congregation members do land
+  here too. Added a `#preview` section with an actual screenshot of the
+  populated `/dashboard` page (seeded realistic mock members/departments/
+  events/join-requests via localStorage, logged in, screenshotted at
+  1400×780 — real product, not a mockup — saved to
+  `public/dashboard-preview.png`), shown in a soft-card frame consistent
+  with the app's existing card style. Added a `#features` section below
+  it: 4 cards (Member records / Departments / Events & RSVPs / WhatsApp
+  automations) using the same lucide icons as the sidebar nav, describing
+  what the product actually does. Caught and fixed one real bug during
+  verification: the source template's top-to-bottom gradient overlay
+  (meant to fade a screenshot into the page) was sized to the full
+  preview container, not just its edge, which washed out roughly the
+  bottom two-thirds of the real dashboard screenshot to near-invisibility
+  (confirmed via a cropped native-resolution screenshot, not just the
+  downscaled full-page one) — removed it entirely, since a product
+  screenshot whose whole point is legibility shouldn't fade itself out.
+  Verified via Playwright: new headline renders, screenshot image loads
+  (checked `naturalWidth` to catch a broken image), features section
+  renders all 4 cards, join/RSVP links and the Features nav anchor still
+  work, zero console errors; also re-checked dark mode — the light
+  screenshot reads fine as a framed card against the dark canvas.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.

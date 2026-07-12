@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Menu, X } from "lucide-react";
+import { ArrowRight, Menu, X, Users, Building2, Calendar, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import { cn } from "@/lib/utils";
@@ -27,8 +27,31 @@ const transitionVariants = {
 };
 
 const navItems = [
-  { name: "Join a department", to: "/join" },
-  { name: "Upcoming events", to: "/upcoming" },
+  { name: "Features", to: "#features" },
+  { name: "Preview", to: "#preview" },
+];
+
+const features = [
+  {
+    icon: Users,
+    title: "Member records",
+    description: "Track every member, tag newcomers, and see who's in which department at a glance.",
+  },
+  {
+    icon: Building2,
+    title: "Departments",
+    description: "Assign leaders, add members, and share a join link straight into a WhatsApp group.",
+  },
+  {
+    icon: Calendar,
+    title: "Events & RSVPs",
+    description: "Public event pages members can RSVP to without creating an account.",
+  },
+  {
+    icon: Sparkles,
+    title: "WhatsApp automations",
+    description: "Birthday shoutouts, event reminders, and newcomer welcomes — sent automatically.",
+  },
 ];
 
 export function HomePage() {
@@ -56,11 +79,11 @@ export function HomePage() {
             <div className="mx-auto max-w-7xl px-6">
               <div className="text-center sm:mx-auto lg:mr-auto lg:mt-0">
                 <AnimatedGroup variants={transitionVariants}>
-                  <Link
-                    to="/join"
+                  <a
+                    href="#preview"
                     className="group mx-auto flex w-fit items-center gap-4 rounded-full border border-border bg-muted p-1 pl-4 shadow-md shadow-black/5 transition-all duration-300 hover:bg-background"
                   >
-                    <span className="text-sm text-foreground">New here? Request to join a department</span>
+                    <span className="text-sm text-foreground">Now with WhatsApp reminders built in</span>
                     <span className="block h-4 w-0.5 border-l border-border bg-white"></span>
                     <div className="size-6 overflow-hidden rounded-full bg-background duration-500 group-hover:bg-muted">
                       <div className="flex w-12 -translate-x-1/2 duration-500 ease-in-out group-hover:translate-x-0">
@@ -72,14 +95,15 @@ export function HomePage() {
                         </span>
                       </div>
                     </div>
-                  </Link>
+                  </a>
 
                   <h1 className="mx-auto mt-8 max-w-4xl text-balance text-6xl md:text-7xl lg:mt-16 xl:text-[5.25rem]">
-                    Join your church community, all in one place
+                    The church CRM that keeps everyone in the loop
                   </h1>
                   <p className="mx-auto mt-8 max-w-2xl text-balance text-lg text-muted-foreground">
-                    Shepherd CRM keeps JPD Church connected — join a department, RSVP to upcoming
-                    events, and never miss a birthday shoutout or event reminder on WhatsApp.
+                    Shepherd CRM helps JPD Church track members and departments, manage events and
+                    RSVPs, and stay in touch automatically — birthday shoutouts and event reminders
+                    sent straight to WhatsApp.
                   </p>
                 </AnimatedGroup>
 
@@ -99,18 +123,83 @@ export function HomePage() {
                 >
                   <div className="rounded-[14px] border border-foreground/10 bg-foreground/10 p-0.5">
                     <Button asChild size="lg" className="rounded-xl px-5 text-base">
-                      <Link to="/join">
-                        <span className="text-nowrap">Join a department</span>
+                      <Link to="/login">
+                        <span className="text-nowrap">Sign in to your dashboard</span>
                       </Link>
                     </Button>
                   </div>
                   <Button asChild size="lg" variant="ghost" className="h-10.5 rounded-xl px-5">
-                    <Link to="/upcoming">
-                      <span className="text-nowrap">See upcoming events</span>
-                    </Link>
+                    <a href="#preview">
+                      <span className="text-nowrap">See how it works</span>
+                    </a>
                   </Button>
                 </AnimatedGroup>
+
+                <AnimatedGroup variants={transitionVariants}>
+                  <p className="mt-8 text-sm text-muted-foreground">
+                    Part of JPD Church?{" "}
+                    <Link to="/join" className="font-medium text-forest hover:underline">
+                      Join a department
+                    </Link>{" "}
+                    or{" "}
+                    <Link to="/upcoming" className="font-medium text-forest hover:underline">
+                      check upcoming events
+                    </Link>
+                    .
+                  </p>
+                </AnimatedGroup>
               </div>
+            </div>
+
+            <AnimatedGroup
+              variants={{
+                container: {
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.05,
+                      delayChildren: 0.75,
+                    },
+                  },
+                },
+                ...transitionVariants,
+              }}
+            >
+              <div id="preview" className="relative mt-16 px-6 pt-8 sm:mt-20">
+                <div className="relative mx-auto max-w-5xl overflow-hidden rounded-2xl bg-white p-3 shadow-lg shadow-black/5 ring-1 ring-black/5">
+                  <img
+                    src="/dashboard-preview.png"
+                    alt="Shepherd CRM admin dashboard showing member stats, newcomer rate, upcoming events, and pending join requests"
+                    className="w-full rounded-xl"
+                    width="1400"
+                    height="780"
+                  />
+                </div>
+              </div>
+            </AnimatedGroup>
+          </div>
+        </section>
+
+        <section id="features" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-5xl px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                Everything a church office needs, nothing it doesn't
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Built for JPD Church's day-to-day — no bloated features borrowed from a sales CRM.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-5 sm:grid-cols-2">
+              {features.map((feature) => (
+                <div key={feature.title} className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+                  <div className="grid size-10 place-items-center rounded-xl bg-forest/10 text-forest">
+                    <feature.icon className="size-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold">{feature.title}</h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{feature.description}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
@@ -174,9 +263,9 @@ function HomeHeader() {
               <ul className="flex gap-8 text-sm">
                 {navItems.map((item) => (
                   <li key={item.to}>
-                    <Link to={item.to} className="block text-muted-foreground duration-150 hover:text-accent-foreground">
+                    <a href={item.to} className="block text-muted-foreground duration-150 hover:text-accent-foreground">
                       <span>{item.name}</span>
-                    </Link>
+                    </a>
                   </li>
                 ))}
               </ul>
@@ -187,12 +276,13 @@ function HomeHeader() {
                 <ul className="space-y-6 text-base">
                   {navItems.map((item) => (
                     <li key={item.to}>
-                      <Link
-                        to={item.to}
+                      <a
+                        href={item.to}
+                        onClick={() => setMenuOpen(false)}
                         className="block text-muted-foreground duration-150 hover:text-accent-foreground"
                       >
                         <span>{item.name}</span>
-                      </Link>
+                      </a>
                     </li>
                   ))}
                 </ul>
