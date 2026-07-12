@@ -60,8 +60,27 @@ sections wired to real data. Its "Newcomer pipeline" drag-and-drop kanban
 was deliberately replaced (per explicit request) with a donut chart
 showing newcomer rate — see "Stack decisions" for the color/chart detail.
 
-Next up: real data entry, or extending departments/join-requests/events
-further (e.g. member-facing polish, dedupe on `/join`).
+**Phase 9: DOB capture + department-scoped join links — DONE (code), not
+yet deployed live.** Superseded an earlier department-lead-role idea:
+WhatsApp groups already handle department communication, so the actual
+gap was smaller — getting group-chat members into the CRM so they're
+covered by the existing birthday automation, not a new in-app role.
+Added a required `dob` field to `join_requests` (migration
+`0006_join_dob.sql`) that flows straight into the created `Member` on
+approval — no more `dob: null` backfill needed. Added `?department=<id>`
+support on `/join` (pre-selects and locks the department), and a
+shareable-link "Copy" control in `DepartmentDrawer` (admin can grab
+`.../join?department=<id>` per department to paste into that
+department's WhatsApp group). No new roles, logins, or dashboards.
+Verified end-to-end via Playwright in mock mode (department link →
+locked `/join` form → DOB required → submit → admin approve → member's
+`dob` matches submitted value), zero console errors. **Migration not yet
+applied to the live Supabase project; frontend not yet deployed** — see
+"Open decisions".
+
+Next up: apply `0006_join_dob.sql` live and deploy, or extending
+departments/join-requests/events further (e.g. member-facing polish,
+dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -220,7 +239,7 @@ members(id, org_id, name, phone, email, dob, tags[], department_ids[], joined_at
         newcomer_welcome_sent_at)
 departments(id, org_id, name, leader_id, member_ids[])
 join_requests(id, org_id, department_id, requester_name, requester_phone,
-              requester_email, member_id?, status, created_at)
+              requester_email, dob, member_id?, status, created_at)
 events(id, org_id, title, date, location, reminder_hours_before, reminder_sent_at)
 rsvps(id, org_id, event_id, attendee_name, attendee_phone, attendee_email,
       member_id?, status, created_at)
@@ -242,6 +261,10 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   on `join_requests`/`rsvps`, SELECT on `departments`/`events`.
 - `0003_event_reminders.sql` — `events.reminder_sent_at`, so the reminder
   Edge Function never double-sends.
+- `0006_join_dob.sql` (Phase 9) — `join_requests.dob`, added nullable,
+  backfilled to a sentinel for any pre-existing rows, then set `not null`
+  — required for the point of the field (immediate birthday-automation
+  coverage), safe regardless of current row count.
 
 ## Open decisions
 
@@ -257,6 +280,12 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   revisit before onboarding org #2.
 - **No dedupe for existing members using `/join`** — see "Member access
   model" limitation above.
+- **Phase 9 not yet live**: `0006_join_dob.sql` needs `supabase db push`
+  against the real project, and the frontend needs a deploy (Vercel
+  auto-deploys on push to `main`, so pushing to GitHub covers it). Do
+  both before sharing any department join link with a real WhatsApp
+  group — until then the live site doesn't have the DOB field or the
+  `?department=` lock.
 - ~~Twilio connection~~ — resolved 2026-07-11: Sandbox connected, both
   functions deployed and scheduled, real WhatsApp delivery confirmed for
   both birthday and reminder messages.
@@ -415,6 +444,30 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   locator from before the Phase 7 rewrite.) Verified via headless
   browser with real populated data (an event, a pending join request)
   before committing.
+- **2026-07-12** — Phase 9: dropped an earlier department-lead-role idea
+  (WhatsApp groups already cover department communication better than an
+  in-app dashboard would) in favor of a smaller fix — getting WhatsApp
+  group members into the CRM so birthday-check-daily covers them. Added
+  required `join_requests.dob` (`0006_join_dob.sql`, added
+  nullable/backfilled/set-not-null to stay safe regardless of existing
+  row count) that now flows into the created `Member` on approval instead
+  of the previous hardcoded `dob: null`. Added `?department=<id>` support
+  on `/join` (pre-selects and disables the department select) and a
+  "Copy" shareable-link control in `DepartmentDrawer` for admins to paste
+  into a department's WhatsApp group. Approve confirm-dialog, rate
+  limiting, and bot-guard untouched. The Chrome extension (used for
+  headless-browser verification in earlier phases) wasn't connected this
+  session, so verification used Playwright directly instead — same
+  approach (drive the real mock-mode app, check zero console errors).
+  Caught and fixed one real gap during that verification:
+  `DepartmentDrawer`'s copy-link handler had no error handling and threw
+  an unhandled `NotAllowedError` when clipboard-write permission was
+  denied (reproduced headless; also possible in real restrictive-permission
+  contexts) — wrapped in try/catch with a fallback message. Confirmed
+  full flow (department link → locked form → required DOB → submit →
+  admin approve → member's `dob` matches) end-to-end, zero console
+  errors. **Not yet applied to the live Supabase project or deployed** —
+  code-complete only as of this entry.
 
 ## How to run
 

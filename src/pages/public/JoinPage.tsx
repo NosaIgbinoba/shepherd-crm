@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
 import { departmentsDb, joinRequestsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
 import { useBotGuard } from "../../lib/useBotGuard";
@@ -9,6 +10,7 @@ const emptyForm = {
   requesterName: "",
   requesterPhone: "",
   requesterEmail: "",
+  dob: "",
   departmentId: "",
 };
 
@@ -17,6 +19,8 @@ const inputClass =
 const labelClass = "mb-1 block text-xs font-medium text-ink/60";
 
 export function JoinPage() {
+  const [searchParams] = useSearchParams();
+  const lockedDepartmentId = searchParams.get("department");
   const [departments, setDepartments] = useState<Department[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
@@ -30,12 +34,19 @@ export function JoinPage() {
     departmentsDb.listDepartments(PUBLIC_ORG_ID).then((list) => {
       if (cancelled) return;
       setDepartments(list);
+      if (lockedDepartmentId && list.some((d) => d.id === lockedDepartmentId)) {
+        setForm((prev) => ({ ...prev, departmentId: lockedDepartmentId }));
+      }
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const isDepartmentLocked =
+    !loading && !!lockedDepartmentId && departments.some((d) => d.id === lockedDepartmentId);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -51,6 +62,7 @@ export function JoinPage() {
         requesterName: form.requesterName.trim(),
         requesterPhone: form.requesterPhone.trim(),
         requesterEmail: form.requesterEmail.trim() || null,
+        dob: form.dob,
       });
       setSubmitted(true);
     } catch (err) {
@@ -119,12 +131,23 @@ export function JoinPage() {
         </label>
 
         <label className="block">
+          <span className={labelClass}>Date of birth</span>
+          <input
+            type="date"
+            value={form.dob}
+            onChange={(e) => setForm({ ...form, dob: e.target.value })}
+            required
+            className={inputClass}
+          />
+        </label>
+
+        <label className="block">
           <span className={labelClass}>Department</span>
           <select
             value={form.departmentId}
             onChange={(e) => setForm({ ...form, departmentId: e.target.value })}
             required
-            disabled={loading}
+            disabled={loading || isDepartmentLocked}
             className={inputClass}
           >
             <option value="" disabled>

@@ -41,6 +41,7 @@ export interface NewJoinRequest {
   requesterName: string;
   requesterPhone: string;
   requesterEmail: string | null;
+  dob: string;
 }
 
 // createJoinRequest runs unauthenticated from the public /join page (no

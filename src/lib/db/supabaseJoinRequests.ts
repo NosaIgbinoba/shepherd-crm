@@ -9,6 +9,7 @@ interface JoinRequestRow {
   requester_name: string;
   requester_phone: string;
   requester_email: string | null;
+  dob: string;
   member_id: string | null;
   status: JoinRequestStatus;
   created_at: string;
@@ -22,6 +23,7 @@ function rowToJoinRequest(row: JoinRequestRow): JoinRequest {
     requesterName: row.requester_name,
     requesterPhone: row.requester_phone,
     requesterEmail: row.requester_email,
+    dob: row.dob,
     memberId: row.member_id,
     status: row.status,
     createdAt: row.created_at,
@@ -48,6 +50,7 @@ export const supabaseJoinRequests: JoinRequestRepository = {
         requester_name: data.requesterName,
         requester_phone: data.requesterPhone,
         requester_email: data.requesterEmail,
+        dob: data.dob,
       })
       .select()
       .single();

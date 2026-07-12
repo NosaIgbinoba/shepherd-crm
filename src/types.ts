@@ -44,6 +44,7 @@ export interface JoinRequest {
   requesterName: string;
   requesterPhone: string;
   requesterEmail: string | null;
+  dob: string; // ISO date
   memberId: string | null;
   status: JoinRequestStatus;
   createdAt: string; // ISO datetime

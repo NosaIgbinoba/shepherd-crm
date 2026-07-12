@@ -34,6 +34,19 @@ export function DepartmentDrawer({
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  async function handleCopyLink() {
+    if (!department) return;
+    const link = `${window.location.origin}/join?department=${department.id}`;
+    try {
+      await navigator.clipboard.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setError("Couldn't copy automatically — select the link text and copy manually.");
+    }
+  }
 
   function toggleMember(memberId: string) {
     setForm((prev) => ({
@@ -78,6 +91,30 @@ export function DepartmentDrawer({
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto p-6">
+          {department && (
+            <Field label="Shareable join link">
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={`${window.location.origin}/join?department=${department.id}`}
+                  onFocus={(e) => e.currentTarget.select()}
+                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2 text-xs text-ink/70 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs hover:bg-neutral-50"
+                >
+                  {linkCopied ? "Copied!" : "Copy"}
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-ink/40">
+                Share this in the department's WhatsApp group — it pre-fills and locks the
+                department on the join form.
+              </p>
+            </Field>
+          )}
+
           <Field label="Name">
             <input
               value={form.name}

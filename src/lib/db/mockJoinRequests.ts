@@ -40,6 +40,7 @@ export const mockJoinRequests: JoinRequestRepository = {
       requesterName: data.requesterName,
       requesterPhone: data.requesterPhone,
       requesterEmail: data.requesterEmail,
+      dob: data.dob,
       memberId: null,
       status: "pending",
       createdAt: new Date().toISOString(),

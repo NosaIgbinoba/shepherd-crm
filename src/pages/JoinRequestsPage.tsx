@@ -53,7 +53,7 @@ export function JoinRequestsPage() {
         name: request.requesterName,
         phone: request.requesterPhone,
         email: request.requesterEmail ?? "",
-        dob: null,
+        dob: request.dob,
         tags: ["newcomer"],
         departmentIds: [request.departmentId],
         joinedAt: new Date().toISOString().slice(0, 10),
