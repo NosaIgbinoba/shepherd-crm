@@ -132,15 +132,13 @@ export function AnnouncementsListPage() {
                       })()}
                     </td>
                     <td className="px-6 py-3">
-                      {!announcement.sentAt && (
-                        <button
-                          disabled={deletingId === announcement.id}
-                          onClick={() => handleDelete(announcement.id)}
-                          className="rounded-lg border border-border px-3 py-1 text-xs hover:bg-neutral-50 disabled:opacity-60"
-                        >
-                          Cancel
-                        </button>
-                      )}
+                      <button
+                        disabled={deletingId === announcement.id}
+                        onClick={() => handleDelete(announcement.id)}
+                        className="rounded-lg border border-border px-3 py-1 text-xs hover:bg-neutral-50 disabled:opacity-60"
+                      >
+                        {announcement.sentAt ? "Delete" : "Cancel"}
+                      </button>
                     </td>
                   </tr>
                 ))

@@ -43,7 +43,31 @@ export function EventDrawer({
       : emptyForm
   );
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (!event) return;
+    const confirmed = window.confirm(
+      `Delete "${event.title}"? This can't be undone` +
+        (event.source === "google"
+          ? " — it's synced from Google Calendar, so it'll come back on the next sync unless it's also removed there."
+          : ", and any RSVPs for it will be deleted too.")
+    );
+    if (!confirmed) return;
+
+    setError(null);
+    setDeleting(true);
+    try {
+      await eventsDb.deleteEvent(orgId, event.id);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete event");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -166,11 +190,22 @@ export function EventDrawer({
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || deleting}
             className="w-full rounded-lg bg-forest px-4 py-2 text-sm text-white disabled:opacity-60"
           >
             {saving ? "Saving…" : "Save event"}
           </button>
+
+          {event && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+              className="w-full rounded-lg border border-destructive/30 px-4 py-2 text-sm text-destructive hover:bg-destructive/5 disabled:opacity-60"
+            >
+              {deleting ? "Deleting…" : "Delete event"}
+            </button>
+          )}
         </form>
       </SheetContent>
     </Sheet>

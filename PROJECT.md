@@ -1087,6 +1087,26 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   Templates via Twilio's Content API) until later, per explicit
   request; user reopened their own test window by messaging the
   Sandbox number from their phone in the meantime.
+- **2026-07-14** — Cleanup: added delete capability to two admin pages
+  that were missing it. `AnnouncementsListPage` already had a delete
+  path (the "Cancel" button + `deleteAnnouncement`), but it was hidden
+  once an announcement's `sentAt` was set — extended to always show,
+  relabeled "Delete" for already-sent rows (vs. "Cancel" for pending)
+  since deleting a sent record isn't cancelling a future action. Events
+  had no delete UI at all despite `EventRepository.deleteEvent` already
+  existing — added a "Delete event" button to `EventDrawer` (shown only
+  when editing an existing event, not on create), gated behind a
+  `window.confirm` since `rsvps.event_id` cascades on delete (real,
+  irreversible data loss for a manual event with RSVPs). Deliberately
+  works for `source='google'` events too — this is the actual manual
+  cleanup path PROJECT.md's Phase 11 "no auto-delete for events removed
+  from Google" limitation always assumed would exist; the confirm text
+  differs for synced events (warns it'll reappear on the next sync
+  unless also removed in Google Calendar itself). Verified both via
+  Playwright in mock mode — pending vs. sent announcement button
+  labels, deleting a sent announcement leaves an unrelated pending one
+  untouched, deleting both a manual and a Google-synced event (each
+  with its own confirm-dialog wording) — zero console errors.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
