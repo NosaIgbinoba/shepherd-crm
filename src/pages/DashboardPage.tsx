@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Pie, PieChart, Cell } from "recharts";
-import { Users, UserPlus, Calendar, Cake, ArrowRight } from "lucide-react";
-import { db, eventsDb, joinRequestsDb, departmentsDb } from "../lib/db";
+import { Users, UserPlus, Calendar, Cake, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { db, eventsDb, joinRequestsDb, departmentsDb, attendanceDb } from "../lib/db";
 import { useAuth } from "../lib/auth/AuthContext";
+import { KNOWN_SERVICES } from "../lib/constants";
+import { latestAttendanceChange } from "../lib/attendanceAggregation";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
   type ChartConfig,
 } from "../components/ui/chart";
-import type { ChurchEvent, Department, JoinRequest, Member } from "../types";
+import type { AttendanceRecord, ChurchEvent, Department, JoinRequest, Member } from "../types";
 
 // Chart-safe variants of our forest/amber-clay brand colors — the exact UI
 // button/badge hex values fail the dataviz skill's chroma/lightness checks
@@ -58,6 +60,7 @@ export function DashboardPage() {
   const [events, setEvents] = useState<ChurchEvent[]>([]);
   const [joinRequests, setJoinRequests] = useState<JoinRequest[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,12 +70,14 @@ export function DashboardPage() {
       eventsDb.listEvents(orgId),
       joinRequestsDb.listJoinRequests(orgId),
       departmentsDb.listDepartments(orgId),
-    ]).then(([memberList, eventList, requestList, departmentList]) => {
+      attendanceDb.listAttendanceRecords(orgId),
+    ]).then(([memberList, eventList, requestList, departmentList, attendanceList]) => {
       if (cancelled) return;
       setMembers(memberList);
       setEvents(eventList);
       setJoinRequests(requestList);
       setDepartments(departmentList);
+      setAttendanceRecords(attendanceList);
       setLoading(false);
     });
     return () => {
@@ -138,6 +143,44 @@ export function DashboardPage() {
             <div className="mt-2 text-2xl font-semibold tracking-tight">{s.value}</div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {KNOWN_SERVICES.map((service) => {
+          const { latest, percentChange } = latestAttendanceChange(attendanceRecords, service.value);
+          const isUp = percentChange !== null && percentChange >= 0;
+          return (
+            <Link
+              key={service.value}
+              to="/attendance"
+              className="rounded-2xl bg-white p-5 ring-1 ring-black/5 transition hover:ring-forest/30"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-medium text-ink/50">{service.label} attendance</div>
+                <ArrowRight className="size-3.5 text-ink/30" />
+              </div>
+              <div className="mt-2 flex items-baseline gap-3">
+                <div className="text-2xl font-semibold tracking-tight">
+                  {latest ? latest.headcount : "—"}
+                </div>
+                {percentChange !== null && (
+                  <div
+                    className={`flex items-center gap-1 text-xs font-medium ${
+                      isUp ? "text-forest" : "text-destructive"
+                    }`}
+                  >
+                    {isUp ? (
+                      <TrendingUp className="size-3.5" />
+                    ) : (
+                      <TrendingDown className="size-3.5" />
+                    )}
+                    {Math.abs(Math.round(percentChange))}%
+                  </div>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-[1.6fr_1fr]">

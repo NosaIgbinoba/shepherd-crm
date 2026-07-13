@@ -1,5 +1,7 @@
 import type {
   Announcement,
+  AttendanceRecord,
+  AttendanceSubmittedBy,
   ChurchEvent,
   Department,
   JoinRequest,
@@ -102,4 +104,21 @@ export interface AnnouncementRepository {
   listAnnouncements(orgId: string): Promise<Announcement[]>;
   createAnnouncement(orgId: string, data: NewAnnouncement): Promise<Announcement>;
   deleteAnnouncement(orgId: string, announcementId: string): Promise<void>;
+}
+
+export interface NewAttendanceRecord {
+  serviceName: string;
+  date: string;
+  headcount: number;
+  submittedBy: AttendanceSubmittedBy;
+}
+
+// createAttendanceRecord runs from both the admin AttendanceDrawer and the
+// public /attendance/submit page (anon INSERT-only, same pattern as
+// join requests/rsvps) — submittedBy distinguishes which. No
+// update/delete: this is a create-only form, no edit UI exists. See
+// PROJECT.md.
+export interface AttendanceRepository {
+  listAttendanceRecords(orgId: string): Promise<AttendanceRecord[]>;
+  createAttendanceRecord(orgId: string, data: NewAttendanceRecord): Promise<AttendanceRecord>;
 }

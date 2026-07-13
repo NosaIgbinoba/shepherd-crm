@@ -185,9 +185,99 @@ push` for `0007`, deploy `calendar-sync`, schedule
 jobs), test-invoke via `curl` before scheduling, commit + push the
 frontend.
 
-Next up: finish Phase 11 once Google Cloud setup lands, or extending
-departments/join-requests/events further (e.g. member-facing polish,
-dedupe on `/join`).
+**Phase 12: aggregate service attendance tracking — code-complete, built
+in one pass, not yet deployed live.** New feature, built from scratch —
+headcounts per service (First Service, Youth Service), not individual
+check-in: deliberately no member/phone matching, no dedupe against a
+person, matching how ushers already count. New table
+`attendance_records` (`0008_attendance.sql`): `service_name` is free
+text, not an enum — current usage is `'first_service'`/`'youth_service'`,
+but more services can be added later without a migration (a small
+`KNOWN_SERVICES` constant in `src/lib/constants.ts` is the one place the
+UI needs to know what exists, for the admin dropdown, the two chart
+series, and the copy-link buttons — adding a third service still means a
+code edit there, just never a schema migration). Rate-limit trigger,
+same `BEFORE INSERT` pattern as `join_requests`/`rsvps`
+(`0005_security_hardening.sql`), but **exact-match dedup** on
+`(service_name, date)` rather than a rolling per-hour count — the goal
+is specifically blocking the same service+date being submitted twice
+(e.g. two ushers both logging one Sunday), not general throttling.
+
+Two submission paths, both writing to the same table/fields (no
+requester identity captured — this isn't tied to an individual, unlike
+`join_requests`/`rsvps`): admin form (`AttendanceDrawer`, create-only —
+no edit/list UI exists, just this one form behind a "Log attendance"
+button) and a public no-login link at **`/attendance/submit?service=
+<value>`**, same pattern as `/join?department=<id>`. Resolved one
+ambiguity in the spec myself: the instructions used `/attendance` for
+both the protected admin analytics page and the public link, which
+can't be the same route (one's wrapped in `Layout`+`ProtectedRoute`,
+the other's bare) — split them the way this app already splits
+`/join-requests` vs `/join` and `/events` vs `/upcoming`. The public
+page always operates locked to a service from the query param (no
+free-choice dropdown, since admins hand out per-service links via
+"Copy link" buttons on `/attendance` — same clipboard pattern as
+`DepartmentDrawer`, including its try/catch fallback for
+clipboard-permission failures); missing `?service=` is a real error
+state, not a silent default. Added the same honeypot+timing bot-guard
+`/join`/`/rsvp` use, even though not explicitly requested — matches
+this app's "every public form gets it" posture since Phase 6.5, and
+headcount data integrity feeds directly into the analytics.
+
+`/attendance` (new nav tab, `BarChart3` icon — separate from the
+dashboard, same reasoning as `/calendar`): granularity toggle
+(Weekly/Monthly/Quarterly) and a date-range preset select (default
+"Last 12 months") drive a `src/lib/attendanceAggregation.ts` module —
+pure, unit-tested functions, no Postgres view, fetching all records
+once via the repository layer (tiny volume, matching how the dashboard
+already aggregates client-side). Buckets by **mean, not sum**, at every
+granularity — summing would produce a meaningless inflated number for
+"monthly attendance." A period with no submitted record is `null`, never
+`0`; recharts' `Line` (`connectNulls={false}`) breaks visually at the
+gap, and average/highest/lowest/percent-change all explicitly filter
+nulls out. "Percent change vs. immediately preceding period" is computed
+from the full, unclipped bucket history, not just the visible
+date-range window, so the oldest visible bucket in e.g. "last 12 months"
+still has a real predecessor to compare against — verified with a
+standalone logic test (transpiled the module with `esbuild`, ran outside
+the browser) before ever touching the UI, specifically checking that a
+gap immediately before the latest data point correctly yields `null`
+rather than silently skipping back to compare against an older bucket.
+Chart: one shared `recharts` `LineChart` with both services as separate
+colored lines (not tabs, not side-by-side charts) — the strongest reading
+of "must be comparable at a glance." Re-ran the dataviz skill's
+`validate_palette.js` rather than assuming the dashboard donut's already-
+validated `#25855b`/`#ec7c0e` would still pass for this use — it does
+(light mode; the WARN on contrast is satisfied by the legend + visible
+stat numbers, same relief the donut already relies on). Confirmed the
+dark-mode question doesn't actually apply: every "soft card" in this app
+(including this chart's container) is hardcoded `bg-white` with no
+`dark:` variant, so the chart never actually renders on a dark surface
+regardless of theme — matches the existing donut's precedent of only
+validating once.
+
+Dashboard addition, exactly as scoped (no new charts there): a 2-card
+row per service showing latest raw headcount + percent change vs. that
+service's immediately preceding raw record (not granularity-bucketed —
+the dashboard has no granularity toggle), linking to `/attendance`.
+
+Verified via Playwright in mock mode: dashboard cards show correct
+headcount/%, link through correctly; `/attendance` renders granularity
+toggle, range select, per-service stat cards, and the chart; copy-link
+shows the same clipboard-permission fallback as `DepartmentDrawer`
+(confirmed the fallback path specifically, not just that the happy path
+worked); switching granularity re-renders cleanly; admin log-attendance
+flow succeeds, and a duplicate service+date submission surfaces the
+trigger's friendly error message; public submission page correctly
+errors on a missing `?service=`, shows the locked service label
+otherwise, and succeeds after the bot-guard delay. Screenshotted the
+populated chart directly to confirm the gap renders as a real visual
+break in the line (not a dip to zero). Zero console errors throughout.
+**Not yet applied to the live Supabase project or deployed.**
+
+Next up: deploy Phase 12, finish Phase 11 once Google Cloud setup lands,
+or extending departments/join-requests/events further (e.g.
+member-facing polish, dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -353,6 +443,8 @@ rsvps(id, org_id, event_id, attendee_name, attendee_phone, attendee_email,
       member_id?, status, created_at)
 announcements(id, org_id, message, target_type, target_value, scheduled_at,
               sent_at, created_at)
+attendance_records(id, org_id, service_name, date, headcount, submitted_by,
+                    created_at)
 users(id, org_id, email, role, member_ref)
 ```
 
@@ -376,6 +468,9 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
 - `0007_google_calendar_sync.sql` (Phase 11) — `events.google_event_id`
   (nullable, unique — sync upsert key) and `events.source` ('manual' |
   'google', default 'manual').
+- `0008_attendance.sql` (Phase 12) — new `attendance_records` table.
+  `service_name` is free text (no enum, no migration needed for a new
+  service); exact-match dedup trigger on `(service_name, date)`.
 
 ## Open decisions
 
@@ -409,6 +504,13 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
 - **No auto-delete for events removed from Google Calendar** (Phase 11):
   accepted for v1 since deleting cascades to `rsvps`. Revisit if stale
   synced events become a real annoyance.
+- **Phase 12 not yet live**: `0008_attendance.sql` needs `supabase db
+  push`, and the frontend needs a commit + push. Code-complete, verified
+  in mock mode, just not deployed yet.
+- **No edit/delete UI for attendance records**: create-only, matching
+  the literal scope asked for. A usher typo currently has no in-app fix
+  path — would need a direct SQL correction. Revisit if that's a real
+  problem in practice.
 - **Timezone handling is naive**: birthday matching uses UTC month/day, and
   the cron schedule is a fixed UTC time chosen to match Ireland's *current*
   offset (UTC+1, Irish Summer Time). `pg_cron` doesn't auto-adjust for DST,
@@ -702,6 +804,42 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   Verified via Playwright (year jumps forward/back 12 months correctly,
   Today returns to the current month, the picker jumps straight to an
   arbitrary month 2 years out), zero console errors.
+- **2026-07-13** — Phase 12: aggregate service attendance tracking,
+  built from scratch in one pass (confirmed via repo/git search that no
+  prior version existed, despite the request initially describing it as
+  superseding one). New `attendance_records` table
+  (`0008_attendance.sql`, free-text `service_name`, exact-match dedup
+  trigger on `service_name`+`date`), `AttendanceRepository` following
+  the existing mock/Supabase split, `AttendanceDrawer` (admin,
+  create-only), public `/attendance/submit?service=<value>` (resolved a
+  route-naming conflict in the spec myself — split admin vs. public the
+  way `/join-requests`/`/join` already are), and `/attendance` — a new
+  nav tab with a granularity toggle, date-range presets, per-service
+  stat cards, and one shared two-series `recharts` line chart. Core
+  logic lives in `src/lib/attendanceAggregation.ts` (pure functions,
+  mean not sum per bucket, gaps as real `null`s excluded from every
+  stat). Verified that logic standalone before touching any UI —
+  transpiled the module with `esbuild` and ran it under plain Node,
+  specifically checking that a gap immediately before the most recent
+  data point yields `percentChange: null` rather than silently
+  comparing against an older bucket. Re-ran the dataviz skill's
+  `validate_palette.js` on the chart colors rather than assuming the
+  dashboard donut's already-validated pair would still pass. Dashboard
+  got exactly the scoped addition (2 cards, latest headcount + %
+  change per service, linking to `/attendance`) and nothing more.
+  Verified the full stack via Playwright in mock mode: dashboard cards,
+  granularity/range controls, stat cards, chart rendering, copy-link
+  (including its clipboard-permission fallback, not just the happy
+  path), the admin log-attendance flow, the dedup trigger's error
+  message on a duplicate submission, and the public page's missing-
+  service error state plus a successful locked-service submission.
+  Screenshotted the populated chart to visually confirm the gap breaks
+  the line rather than dipping to zero. Zero console errors. Hit one
+  real `tsc -b` vs. `tsc --noEmit` discrepancy (same class of gap as
+  Phase 7): a variable narrowed by an early-return guard wasn't carried
+  into a nested function's closure, only caught by the full project
+  build — fixed with an explicit re-binding. **Not yet applied to the
+  live Supabase project or deployed.**
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.

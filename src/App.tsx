@@ -9,11 +9,13 @@ import { DepartmentsListPage } from "./pages/DepartmentsListPage";
 import { JoinRequestsPage } from "./pages/JoinRequestsPage";
 import { EventsListPage } from "./pages/EventsListPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { AttendancePage } from "./pages/AttendancePage";
 import { AnnouncementsListPage } from "./pages/AnnouncementsListPage";
 import { HomePage } from "./pages/public/HomePage";
 import { JoinPage } from "./pages/public/JoinPage";
 import { PublicEventsPage } from "./pages/public/PublicEventsPage";
 import { RsvpPage } from "./pages/public/RsvpPage";
+import { AttendanceSubmitPage } from "./pages/public/AttendanceSubmitPage";
 
 function App() {
   return (
@@ -25,6 +27,7 @@ function App() {
           <Route path="/join" element={<JoinPage />} />
           <Route path="/upcoming" element={<PublicEventsPage />} />
           <Route path="/rsvp/:eventId" element={<RsvpPage />} />
+          <Route path="/attendance/submit" element={<AttendanceSubmitPage />} />
 
           <Route
             path="/dashboard"
@@ -82,6 +85,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <CalendarPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <AttendancePage />
                 </Layout>
               </ProtectedRoute>
             }

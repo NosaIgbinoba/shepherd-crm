@@ -7,6 +7,7 @@ import {
   Calendar,
   CalendarSync,
   ClipboardCheck,
+  BarChart3,
   Sparkles,
   LogOut,
   Menu,
@@ -22,6 +23,7 @@ const nav = [
   { to: "/join-requests", label: "Join requests", icon: ClipboardCheck },
   { to: "/events", label: "Events", icon: Calendar },
   { to: "/calendar", label: "Calendar", icon: CalendarSync },
+  { to: "/attendance", label: "Attendance", icon: BarChart3 },
   { to: "/announcements", label: "Announcements", icon: Sparkles },
 ];
 
@@ -32,6 +34,7 @@ const titles: Record<string, string> = {
   "/join-requests": "Join requests",
   "/events": "Events",
   "/calendar": "Calendar",
+  "/attendance": "Attendance",
   "/announcements": "Announcements",
 };
 

@@ -103,3 +103,20 @@ export interface AppUser {
   role: UserRole;
   memberRef: string | null;
 }
+
+export type AttendanceSubmittedBy = "admin" | "link";
+
+// Aggregate headcount per service, not individual check-in — deliberately
+// no member/phone matching, no dedupe against a person. serviceName is
+// free text (not an enum): more services can be added later without a
+// migration, at the cost of a small KNOWN_SERVICES code edit in
+// src/lib/constants.ts to teach the UI about them. See PROJECT.md.
+export interface AttendanceRecord {
+  id: string;
+  orgId: string;
+  serviceName: string;
+  date: string; // ISO date (YYYY-MM-DD)
+  headcount: number;
+  submittedBy: AttendanceSubmittedBy;
+  createdAt: string; // ISO datetime
+}
