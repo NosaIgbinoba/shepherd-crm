@@ -15,11 +15,14 @@ export interface AttendanceStats {
   percentChange: number | null; // null when there's no data to compare against
 }
 
-// Monday-anchored weeks, matching CalendarPage's convention.
+// Sunday-anchored, not Monday (unrelated to CalendarPage's Monday-start
+// month grid) — services only happen on Sundays, so every real record's
+// date already IS a Sunday. Anchoring here to Sunday means
+// bucketStart(sundayDate) === sundayDate with no shift, so weekly ticks
+// show the actual submitted dates instead of an arbitrary shifted day.
 function startOfWeek(date: Date): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const weekday = (d.getDay() + 6) % 7; // 0 = Monday
-  d.setDate(d.getDate() - weekday);
+  d.setDate(d.getDate() - d.getDay());
   return d;
 }
 
@@ -67,7 +70,10 @@ function bucketKey(date: Date, granularity: Granularity): string {
 function bucketLabel(date: Date, granularity: Granularity): string {
   const start = bucketStart(date, granularity);
   if (granularity === "weekly") {
-    return start.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    // Explicit "en-US" rather than the browser locale (undefined) — this
+    // app's actual users are in Ireland, where the locale default renders
+    // "7 Jun" (day-first), not the "Jun 7" month-first format asked for.
+    return start.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
   if (granularity === "monthly") {
     return start.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
@@ -171,4 +177,33 @@ export function latestAttendanceChange(
     latest,
     percentChange: ((latest.headcount - previous.headcount) / previous.headcount) * 100,
   };
+}
+
+// Phrases whichever period a caller's percentChange was already computed
+// over — weekly/monthly/quarterly analytics-page granularity, or the
+// dashboard's raw week-over-week record comparison. No new math: this is
+// strictly a sentence wrapper around a percentChange the caller already
+// computed via computeAttendanceSeries or latestAttendanceChange.
+export function periodPhrase(granularity: Granularity): string {
+  if (granularity === "weekly") return "week-over-week";
+  if (granularity === "monthly") return "this month compared to last month";
+  return "this quarter compared to last quarter";
+}
+
+const STEADY_THRESHOLD_PERCENT = 5;
+
+export function attendanceInsight(
+  serviceLabel: string,
+  periodPhraseText: string,
+  percentChange: number | null
+): string {
+  if (percentChange === null) {
+    return `Not enough data yet to compare ${serviceLabel}.`;
+  }
+  const rounded = Math.abs(Math.round(percentChange));
+  if (rounded < STEADY_THRESHOLD_PERCENT) {
+    return `${serviceLabel} has held steady ${periodPhraseText}.`;
+  }
+  const direction = percentChange > 0 ? "up" : "down";
+  return `${serviceLabel} is ${direction} ${rounded}% ${periodPhraseText}.`;
 }

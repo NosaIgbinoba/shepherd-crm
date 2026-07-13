@@ -5,7 +5,7 @@ import { Users, UserPlus, Calendar, Cake, ArrowRight, TrendingUp, TrendingDown }
 import { db, eventsDb, joinRequestsDb, departmentsDb, attendanceDb } from "../lib/db";
 import { useAuth } from "../lib/auth/AuthContext";
 import { KNOWN_SERVICES } from "../lib/constants";
-import { latestAttendanceChange } from "../lib/attendanceAggregation";
+import { latestAttendanceChange, attendanceInsight } from "../lib/attendanceAggregation";
 import {
   ChartContainer,
   ChartTooltip,
@@ -178,6 +178,9 @@ export function DashboardPage() {
                   </div>
                 )}
               </div>
+              <p className="mt-2 text-xs text-ink/50">
+                {attendanceInsight(service.label, "week-over-week", percentChange)}
+              </p>
             </Link>
           );
         })}

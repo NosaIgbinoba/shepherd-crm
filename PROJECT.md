@@ -862,6 +862,53 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   forever instead of degrading gracefully. Waited for `migration list`
   to confirm both `0007`/`0008` were live before pushing (commit
   `5ffe4c0`).
+- **2026-07-13** — Phase 12 refinements, all additive, no schema/repository
+  changes: (1) fixed the weekly chart x-axis — `startOfWeek()` in
+  `attendanceAggregation.ts` was anchoring to **Monday** (copied from
+  `CalendarPage`'s unrelated month-grid convention) even though every
+  real record is a Sunday, so weekly labels showed an arbitrary
+  shifted-back date instead of the actual submitted date. Re-anchored to
+  Sunday (fully local to this file — doesn't touch `CalendarPage`).
+  Along the way, caught a second real bug via a standalone Node test
+  before it ever reached the UI: `toLocaleDateString(undefined, ...)`
+  follows the *browser's* locale, and this app's real users are in
+  Ireland — an Irish locale renders "7 Jun" (day-first), not the "Jun 7"
+  explicitly asked for. Forced `"en-US"` explicitly for the weekly label
+  rather than leaving it locale-dependent. (2) Added computed/templated
+  insight sentences — `attendanceInsight()` + `periodPhrase()` in
+  `attendanceAggregation.ts`, strictly a phrasing wrapper around the
+  `percentChange` both `computeAttendanceSeries` and
+  `latestAttendanceChange` already compute — no new math, no AI/API
+  call. Shown per-service inside each `/attendance` stat card
+  (granularity-scoped phrasing: "this quarter compared to last quarter"
+  etc.) and as a condensed line on each dashboard attendance card
+  (fixed to "week-over-week", matching the dashboard's existing raw
+  record-over-record comparison, since it has no granularity toggle).
+  (3) Mock-mode-only demo data seeding: "Seed demo data"/"Clear demo
+  data" buttons on `/attendance`, gated behind `!isSupabaseConfigured`
+  so they're never reachable against the live project. Surfaced the
+  cap question directly before writing any seeding code, per explicit
+  instruction — First Service capped at 1-50 and Youth Service at
+  1-200 reads inverted from a typical main-vs-youth size relationship;
+  user confirmed intentional (Youth Service is genuinely JPD's bigger
+  service). Seeded rows are marked via an `id` prefix (`seed-fs-*`/
+  `seed-ys-*`) rather than overloading `submitted_by`, which has real
+  meaning elsewhere (admin vs. public-link) that a "this is fake data"
+  flag would corrupt; no new field was added to the shared
+  `AttendanceRecord` type, since it mirrors the live Postgres schema
+  across both mock and Supabase repositories. Youth Service's seed
+  window starts at the later of "start of Q3 this year" or the 12-month
+  default window, reflecting that it's newer than First Service.
+  Verified the weekly-label fix standalone (transpiled with `esbuild`,
+  asserted exact `"Jun 7"`/`"Jun 14"` output against real Sunday inputs)
+  before touching the UI, then the full set via Playwright in mock
+  mode: seed/clear buttons work and are mock-only, insight sentences
+  render on both `/attendance` and the dashboard, weekly x-axis ticks
+  are all real dates matching `Mon D` (verified against the X-axis
+  specifically after an initial test-script mistake accidentally
+  included the Y-axis's numeric ticks too). Zero console errors.
+  Code-complete; deploy (commit + push — no migration needed, this
+  round touched no schema) still pending confirmation.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.

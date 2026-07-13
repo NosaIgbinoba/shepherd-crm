@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Copy, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Copy, TrendingUp, TrendingDown, Sparkles, Trash2 } from "lucide-react";
 import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { attendanceDb } from "../lib/db";
+import { isSupabaseConfigured } from "../lib/supabase/client";
 import { KNOWN_SERVICES } from "../lib/constants";
 import { useAuth } from "../lib/auth/AuthContext";
 import { AttendanceDrawer } from "../components/AttendanceDrawer";
-import { computeAttendanceSeries, type Granularity } from "../lib/attendanceAggregation";
+import {
+  computeAttendanceSeries,
+  attendanceInsight,
+  periodPhrase,
+  type Granularity,
+} from "../lib/attendanceAggregation";
+import { seedDemoAttendanceData, clearDemoAttendanceData } from "../lib/db/mockAttendance";
 import type { AttendanceRecord } from "../types";
 import {
   ChartContainer,
@@ -63,6 +70,19 @@ export function AttendancePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
+  // Mock-mode-only dev convenience — never available against the live
+  // Supabase project (isSupabaseConfigured gates the buttons that call
+  // these). See PROJECT.md.
+  function handleSeedDemoData() {
+    seedDemoAttendanceData(orgId);
+    refresh();
+  }
+
+  function handleClearDemoData() {
+    clearDemoAttendanceData();
+    refresh();
+  }
+
   async function handleCopyLink(serviceValue: string) {
     const link = `${window.location.origin}/attendance/submit?service=${serviceValue}`;
     try {
@@ -119,6 +139,22 @@ export function AttendancePage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+        {!isSupabaseConfigured && (
+          <>
+            <button
+              onClick={handleSeedDemoData}
+              className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-ink/60 hover:bg-neutral-50"
+            >
+              <Sparkles className="size-3.5" /> Seed demo data
+            </button>
+            <button
+              onClick={handleClearDemoData}
+              className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-sm text-ink/60 hover:bg-neutral-50"
+            >
+              <Trash2 className="size-3.5" /> Clear demo data
+            </button>
+          </>
+        )}
         <button
           onClick={() => setLogging(true)}
           className="inline-flex items-center gap-1 rounded-lg bg-forest px-3 py-2 text-sm text-white hover:bg-forest/90"
@@ -191,6 +227,13 @@ export function AttendancePage() {
                     <Stat label="Lowest" value={stats?.lowest} />
                     <PercentStat value={stats?.percentChange} />
                   </div>
+                  <p className="mt-3 border-t border-border pt-3 text-xs text-ink/60">
+                    {attendanceInsight(
+                      service.label,
+                      periodPhrase(granularity),
+                      stats?.percentChange ?? null
+                    )}
+                  </p>
                 </div>
               );
             })}
@@ -207,10 +250,12 @@ export function AttendancePage() {
                   <CartesianGrid vertical={false} strokeDasharray="3 3" />
                   <XAxis
                     dataKey="label"
+                    type="category"
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
                     fontSize={11}
+                    interval="preserveStartEnd"
                   />
                   <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={11} width={32} />
                   <ChartTooltip content={<ChartTooltipContent />} />
