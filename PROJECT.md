@@ -185,8 +185,8 @@ push` for `0007`, deploy `calendar-sync`, schedule
 jobs), test-invoke via `curl` before scheduling, commit + push the
 frontend.
 
-**Phase 12: aggregate service attendance tracking — code-complete, built
-in one pass, not yet deployed live.** New feature, built from scratch —
+**Phase 12: aggregate service attendance tracking — DONE, fully live.**
+Built from scratch in one pass —
 headcounts per service (First Service, Youth Service), not individual
 check-in: deliberately no member/phone matching, no dedupe against a
 person, matching how ushers already count. New table
@@ -273,11 +273,13 @@ errors on a missing `?service=`, shows the locked service label
 otherwise, and succeeds after the bot-guard delay. Screenshotted the
 populated chart directly to confirm the gap renders as a real visual
 break in the line (not a dip to zero). Zero console errors throughout.
-**Not yet applied to the live Supabase project or deployed.**
+Applied to the live Supabase project (`supabase db push`, which also
+swept up the still-pending `0007` from Phase 11) and pushed to `main`
+(commit `5ffe4c0`), confirmed via `supabase migration list`.
 
-Next up: deploy Phase 12, finish Phase 11 once Google Cloud setup lands,
-or extending departments/join-requests/events further (e.g.
-member-facing polish, dedupe on `/join`).
+Next up: finish Phase 11 once Google Cloud setup lands, or extending
+departments/join-requests/events further (e.g. member-facing polish,
+dedupe on `/join`).
 
 ## Stack decisions (and why)
 
@@ -498,15 +500,20 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   calendar is private and the user explicitly chose to keep it that way
   (offered making it public for a simpler ICS-feed sync; declined) —
   using a Google service account + Calendar API instead. See Phase 11.
-- **Phase 11 not yet live**: blocked on the user completing Google
-  Cloud Console setup (service account + sharing the calendar with it).
-  See Phase 11 for the exact remaining steps once credentials arrive.
+- **Phase 11 partially live**: `0007_google_calendar_sync.sql` is now
+  applied (swept up in the same `db push` as `0008`, 2026-07-13) — the
+  `source`/`google_event_id` columns exist live. Still blocked on the
+  user's Google Cloud Console setup for the rest: `calendar-sync`
+  isn't deployed, no cron job exists yet, so no actual sync is
+  happening. See Phase 11 for the exact remaining steps once the
+  calendar gets shared with the service account.
 - **No auto-delete for events removed from Google Calendar** (Phase 11):
   accepted for v1 since deleting cascades to `rsvps`. Revisit if stale
   synced events become a real annoyance.
-- **Phase 12 not yet live**: `0008_attendance.sql` needs `supabase db
-  push`, and the frontend needs a commit + push. Code-complete, verified
-  in mock mode, just not deployed yet.
+- ~~Phase 12 not yet live~~ — resolved 2026-07-13: `0008_attendance.sql`
+  applied via `supabase db push` (alongside the still-pending `0007`),
+  frontend pushed to `main` (commit `5ffe4c0`), confirmed via
+  `supabase migration list`.
 - **No edit/delete UI for attendance records**: create-only, matching
   the literal scope asked for. A usher typo currently has no in-app fix
   path — would need a direct SQL correction. Revisit if that's a real
@@ -838,8 +845,23 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   real `tsc -b` vs. `tsc --noEmit` discrepancy (same class of gap as
   Phase 7): a variable narrowed by an early-return guard wasn't carried
   into a nested function's closure, only caught by the full project
-  build — fixed with an explicit re-binding. **Not yet applied to the
-  live Supabase project or deployed.**
+  build — fixed with an explicit re-binding.
+
+  Deploy: `supabase db push` hit a transient Cloudflare 502 on the
+  follow-up `migration list` check (retried after backing off ~60s per
+  the error's own guidance — resolved cleanly). The push itself applied
+  **both** `0008_attendance.sql` and the still-pending `0007` from
+  Phase 11 in one go, since `db push` always applies everything
+  outstanding, not just the newest migration. Deliberately did **not**
+  push the frontend in parallel with the migration this time, unlike
+  Phase 9/11: those added columns to existing tables (missing columns
+  just come back `undefined` — safe), but this adds a whole new table,
+  and `DashboardPage`'s `Promise.all([...])` has no `.catch()` — if the
+  frontend had gone live querying `attendance_records` before the table
+  existed, the dashboard would have hung on "Loading dashboard..."
+  forever instead of degrading gracefully. Waited for `migration list`
+  to confirm both `0007`/`0008` were live before pushing (commit
+  `5ffe4c0`).
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
