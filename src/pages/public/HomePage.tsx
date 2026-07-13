@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowRight, Menu, X, Users, Building2, Calendar, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  Menu,
+  X,
+  Users,
+  Building2,
+  Calendar,
+  Sparkles,
+  Copy,
+  UserPlus,
+  ClipboardCheck,
+  MessageCircle,
+  Check,
+  Minus,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AnimatedGroup } from "@/components/ui/animated-group";
 import { cn } from "@/lib/utils";
@@ -29,6 +44,7 @@ const transitionVariants = {
 const navItems = [
   { name: "Features", to: "#features" },
   { name: "Preview", to: "#preview" },
+  { name: "Pricing", to: "#pricing" },
 ];
 
 const features = [
@@ -54,8 +70,89 @@ const features = [
   },
 ];
 
+const howItWorks = [
+  {
+    icon: Copy,
+    title: "Share a join link",
+    description: "An admin copies a department's join link and pastes it into that group's WhatsApp chat.",
+  },
+  {
+    icon: UserPlus,
+    title: "A member requests to join",
+    description: "They fill out a short public form — name, phone, date of birth, department. No account needed.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Admin approves",
+    description: "One click creates the real member record and assigns them to the department.",
+  },
+  {
+    icon: Sparkles,
+    title: "Automations take over",
+    description:
+      "Newcomer welcomes, birthday shoutouts, and event reminders go out on WhatsApp automatically — no manual follow-up.",
+  },
+];
+
+const comparisonRows = [
+  {
+    label: "Pricing model",
+    shepherd: "Single price per tier, everything included",
+    planningCenter: "Modular — separate products, priced per app",
+    churchTrac: "Tiered by feature set",
+  },
+  {
+    label: "WhatsApp automation",
+    shepherd: true,
+    planningCenter: false,
+    churchTrac: false,
+  },
+  {
+    label: "Built for",
+    shepherd: "Congregations that already coordinate over WhatsApp",
+    planningCenter: "Larger, multi-site churches needing modular tools",
+    churchTrac: "Small churches wanting a single budget-friendly tool",
+  },
+];
+
+type PricingTier = {
+  name: string;
+  memberRange: string;
+  monthly: number;
+};
+
+const PRICING_TIERS: PricingTier[] = [
+  { name: "Starter", memberRange: "Up to 100 members", monthly: 19 },
+  { name: "Growth", memberRange: "100–300 members", monthly: 39 },
+  { name: "Established", memberRange: "300+ members", monthly: 69 },
+];
+
+const faqs = [
+  {
+    question: "Is there a free trial? How do I get started?",
+    answer:
+      "There's no self-serve signup yet — every church is currently set up directly. Contact options for new churches are coming soon.",
+  },
+  {
+    question: "How is our member data kept private?",
+    answer:
+      "Every church's data is isolated at the database level — row-level security scopes every record to your organization, so no other church using Shepherd CRM can ever see your members, departments, or records.",
+  },
+  {
+    question: "Does WhatsApp cost anything extra for our church?",
+    answer: "No — WhatsApp messaging is included at every tier, no extra fee.",
+  },
+  {
+    question: "Can members without smartphones still be tracked?",
+    answer:
+      "Yes — admins can add and manage any member manually from the dashboard, whether or not they ever use the public join link or have WhatsApp.",
+  },
+];
+
 export function HomePage() {
   const { user } = useAuth();
+  const [billing, setBilling] = useState<"monthly" | "annual">("monthly");
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (
@@ -203,8 +300,221 @@ export function HomePage() {
             </div>
           </div>
         </section>
+
+        <section id="how-it-works" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-5xl px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">How it works</h2>
+              <p className="mt-3 text-muted-foreground">
+                From a shared link to an automatic WhatsApp welcome — no manual follow-up in
+                between.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {howItWorks.map((step, i) => (
+                <div key={step.title} className="relative rounded-2xl bg-white p-6 ring-1 ring-black/5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-forest text-xs font-semibold text-white">
+                      {i + 1}
+                    </div>
+                    <step.icon className="size-5 text-forest" />
+                  </div>
+                  <h3 className="text-sm font-semibold">{step.title}</h3>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{step.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="why-whatsapp" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-3xl px-6 text-center">
+            <div className="mx-auto mb-5 grid size-12 place-items-center rounded-2xl bg-forest/10 text-forest">
+              <MessageCircle className="size-6" />
+            </div>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Why WhatsApp</h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Most congregations already coordinate over WhatsApp group chats — department
+              updates, event announcements, prayer requests. Shepherd CRM automates within that
+              same channel instead of asking your congregation to check email or install another
+              app. Birthday shoutouts, event reminders, and newcomer welcomes just show up where
+              people already are.
+            </p>
+          </div>
+        </section>
+
+        <section id="comparison" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-4xl px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                Shepherd vs. Planning Center &amp; ChurchTrac
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                A fair, general comparison — not a claim about their current pricing or features,
+                which can change.
+              </p>
+            </div>
+
+            <div className="mt-10 overflow-x-auto rounded-2xl bg-white ring-1 ring-black/5">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="px-5 py-4 font-medium text-muted-foreground"></th>
+                    <th className="px-5 py-4 font-semibold text-forest">Shepherd CRM</th>
+                    <th className="px-5 py-4 font-medium text-muted-foreground">Planning Center</th>
+                    <th className="px-5 py-4 font-medium text-muted-foreground">ChurchTrac</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comparisonRows.map((row) => (
+                    <tr key={row.label} className="border-b border-border last:border-0">
+                      <td className="px-5 py-4 font-medium">{row.label}</td>
+                      <ComparisonCell value={row.shepherd} accent />
+                      <ComparisonCell value={row.planningCenter} />
+                      <ComparisonCell value={row.churchTrac} />
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-5xl px-6">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                One price per tier, everything included
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Members, departments, events &amp; RSVPs, attendance tracking, and every WhatsApp
+                automation — on every tier, no exceptions. Tiers scale with congregation size, not
+                features.
+              </p>
+            </div>
+
+            <div className="mt-8 flex justify-center">
+              <div className="inline-flex rounded-lg border border-border bg-white p-1">
+                <button
+                  onClick={() => setBilling("monthly")}
+                  className={cn(
+                    "rounded-md px-4 py-1.5 text-sm font-medium transition",
+                    billing === "monthly" ? "bg-forest text-white" : "text-ink/60 hover:bg-neutral-50"
+                  )}
+                >
+                  Monthly
+                </button>
+                <button
+                  onClick={() => setBilling("annual")}
+                  className={cn(
+                    "inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition",
+                    billing === "annual" ? "bg-forest text-white" : "text-ink/60 hover:bg-neutral-50"
+                  )}
+                >
+                  Annual
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      billing === "annual" ? "bg-white/20" : "bg-amber-clay/15 text-amber-clay"
+                    )}
+                  >
+                    2 months free
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-10 grid gap-6 md:grid-cols-3">
+              {PRICING_TIERS.map((tier) => {
+                const price = billing === "monthly" ? tier.monthly : tier.monthly * 10;
+                return (
+                  <div key={tier.name} className="rounded-2xl bg-white p-6 ring-1 ring-black/5">
+                    <h3 className="text-base font-semibold">{tier.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{tier.memberRange}</p>
+                    <div className="mt-6 flex items-baseline gap-1">
+                      <span className="text-4xl font-semibold tracking-tight">${price}</span>
+                      <span className="text-sm text-muted-foreground">
+                        /{billing === "monthly" ? "mo" : "yr"}
+                      </span>
+                    </div>
+                    {billing === "annual" && (
+                      <p className="mt-1 text-xs text-amber-clay">
+                        2 months free vs. paying monthly
+                      </p>
+                    )}
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      Everything included — no feature gating between tiers.
+                    </p>
+                    <Button disabled className="mt-6 w-full rounded-xl">
+                      Contact us
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              No self-serve signup yet — contact options are coming soon.
+            </p>
+          </div>
+        </section>
+
+        <section id="faq" className="bg-canvas py-20 md:py-28">
+          <div className="mx-auto max-w-2xl px-6">
+            <div className="text-center">
+              <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">
+                Frequently asked questions
+              </h2>
+            </div>
+
+            <div className="mt-10 space-y-3">
+              {faqs.map((faq, i) => {
+                const open = openFaq === i;
+                return (
+                  <div key={faq.question} className="rounded-2xl bg-white ring-1 ring-black/5">
+                    <button
+                      onClick={() => setOpenFaq(open ? null : i)}
+                      className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
+                      aria-expanded={open}
+                    >
+                      <span className="text-sm font-medium">{faq.question}</span>
+                      <ChevronDown
+                        className={cn(
+                          "size-4 shrink-0 text-muted-foreground transition-transform",
+                          open && "rotate-180"
+                        )}
+                      />
+                    </button>
+                    {open && (
+                      <p className="px-5 pb-4 text-sm text-muted-foreground">{faq.answer}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       </main>
     </>
+  );
+}
+
+function ComparisonCell({ value, accent }: { value: string | boolean; accent?: boolean }) {
+  if (typeof value === "boolean") {
+    return (
+      <td className="px-5 py-4">
+        {value ? (
+          <Check className={cn("size-4", accent ? "text-forest" : "text-muted-foreground")} />
+        ) : (
+          <Minus className="size-4 text-muted-foreground/50" />
+        )}
+      </td>
+    );
+  }
+  return (
+    <td className={cn("px-5 py-4 text-sm", accent ? "font-medium text-ink" : "text-muted-foreground")}>
+      {value}
+    </td>
   );
 }
 

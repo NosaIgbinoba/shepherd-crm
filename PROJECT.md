@@ -119,6 +119,60 @@ screenshot — removed, since a product screenshot's whole point is
 legibility. Verified via Playwright in mock mode both times, zero
 console errors each time. Live — see Phase log for commit details.
 
+**Phase 10 expansion (2026-07-13): five new marketing sections —
+code-complete, not yet deployed.** Below the existing hero/`#preview`/
+`#features` (unchanged): `#how-it-works` (4 steps grounded in real
+built features — join link → public request → admin approve →
+automations, no invented functionality), `#why-whatsapp` (why
+automating inside WhatsApp beats asking congregations to adopt a new
+app/check email), `#comparison` (Shepherd vs. Planning Center/
+ChurchTrac — kept to general, defensible claims like "modular,
+pay-per-app pricing" rather than specific figures that could go stale
+or be wrong, consistent with not disparaging competitors), `#pricing`
+(3 tiers — Starter/Growth/Established, scaled by member count, not
+features, since gating WhatsApp automation behind a higher tier would
+undercut the product's own pitch; Monthly/Annual toggle, annual = 10×
+monthly with a "2 months free" badge), and `#faq`. Pricing tiers live
+as a plain `PRICING_TIERS` const in `HomePage.tsx` — no new table,
+matching the existing "keep aggregation/data simple until it needs to
+be a table" precedent. Reused existing patterns rather than
+introducing new ones: the Monthly/Annual toggle copies
+`AttendancePage`'s granularity-toggle segmented control, the
+comparison table is a hand-rolled `<table>` (matching how
+`JoinRequestsPage`/`EventsListPage` already hand-roll tables instead of
+the installed-but-unused shadcn `table.tsx`), and the FAQ is a
+hand-rolled expand/collapse (no accordion primitive exists in this
+app). Asked before writing any code: every pricing/FAQ "get started"
+CTA needs a real destination given there's no self-serve signup and no
+contact backend — offered a `mailto:` link (needs a real address) vs.
+an honestly-disabled placeholder; user chose disabled. CTAs render as
+real disabled `<Button disabled>` elements (visibly muted, not a
+fake-looking clickable link to nowhere), with a caption underneath —
+"No self-serve signup yet — contact options are coming soon" — same
+"no fake/non-functional UI" precedent as the rest of the app. FAQ
+answers only state what's actually true of the built product (RLS
+org-isolation for the privacy question, WhatsApp genuinely included at
+every tier, manual member-add for the no-smartphone question) — no
+invented capabilities. Verified via Playwright in mock mode: all four
+sections render, the pricing toggle recalculates to the correct 10×
+annual price and shows the "2 months free" badge, all three CTA
+buttons are genuinely `disabled` (not just styled to look that way),
+the FAQ accordion expands/collapses per item, and the new "Pricing"
+header nav link scrolls to `#pricing`. Zero console errors.
+
+Unrelated to the homepage work itself: discovered mid-session that
+local `.env.local` had gone missing (empty file list, no `.bak` either)
+— root cause not fully pinned down (likely a `2>/dev/null`-suppressed
+`mv` failure during dev-server cleanup in an earlier session silently
+no-op'ing against a file that, for whatever reason, wasn't there).
+Reconstructed it from the Supabase project's own API keys
+(`supabase projects api-keys`) rather than guessing — piped directly
+into a small Node script that wrote `.env.local` without the actual
+key value ever appearing in the visible command output, since printing
+a live key to stdout is treated the same as pasting one in chat.
+Verified the reconstructed file works (live-mode login page shows no
+mock-credentials hint, zero console errors) before continuing.
+
 **Phase 11: Google Calendar import — code-complete, blocked on the
 user's Google Cloud setup, not yet live.** One-way sync only: Google
 Calendar → CRM, never the reverse. The church's Google Calendar is
@@ -909,6 +963,26 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   included the Y-axis's numeric ticks too). Zero console errors.
   Code-complete; deploy (commit + push — no migration needed, this
   round touched no schema) still pending confirmation.
+- **2026-07-13** — Phase 10 expansion: added `#how-it-works`,
+  `#why-whatsapp`, `#comparison`, `#pricing`, `#faq` to the public
+  homepage, below the existing hero/preview/features (unchanged). Asked
+  first what pricing/FAQ CTAs should actually do given no self-serve
+  signup exists — offered `mailto:` (needs a real address) vs. an
+  honestly-disabled placeholder; user chose disabled. Reused existing
+  UI patterns throughout rather than introducing new ones (the
+  `AttendancePage` granularity-toggle style for Monthly/Annual, hand-rolled
+  `<table>` matching `JoinRequestsPage`/`EventsListPage` instead of the
+  unused shadcn `table.tsx`, a hand-rolled FAQ accordion since no
+  accordion primitive exists here). Verified all five sections via
+  Playwright in mock mode — pricing math, the "2 months free" badge,
+  genuinely-disabled CTA buttons (not just styled to look inert), FAQ
+  expand/collapse, new nav Pricing anchor — zero console errors.
+  Mid-session, found local `.env.local` missing (no `.bak` either,
+  root cause not fully pinned down); reconstructed it from the
+  Supabase project's own API keys via a script that piped the key
+  straight to disk without it ever appearing in visible output, then
+  verified live-mode login worked before continuing. No schema
+  changes this round.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
