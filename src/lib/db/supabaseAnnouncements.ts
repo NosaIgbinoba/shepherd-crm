@@ -11,6 +11,10 @@ interface AnnouncementRow {
   scheduled_at: string;
   sent_at: string | null;
   created_at: string;
+  recipient_count: number | null;
+  sent_count: number | null;
+  skipped_count: number | null;
+  failed_count: number | null;
 }
 
 function rowToAnnouncement(row: AnnouncementRow): Announcement {
@@ -23,6 +27,10 @@ function rowToAnnouncement(row: AnnouncementRow): Announcement {
     scheduledAt: row.scheduled_at,
     sentAt: row.sent_at,
     createdAt: row.created_at,
+    recipientCount: row.recipient_count,
+    sentCount: row.sent_count,
+    skippedCount: row.skipped_count,
+    failedCount: row.failed_count,
   };
 }
 

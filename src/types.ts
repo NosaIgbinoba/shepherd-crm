@@ -85,6 +85,11 @@ export interface Rsvp {
 // targetValue is a MemberTag when targetType is "tag", or a Department id
 // when targetType is "department". sentAt makes delivery idempotent
 // regardless of how often the scheduled function runs.
+// recipientCount/sentCount/skippedCount/failedCount are null until
+// send-announcements actually processes the row, then let the UI tell
+// "sent to everyone" apart from a silent total delivery failure (e.g.
+// every recipient's phone number failing the E.164 check) — both cases
+// previously looked identical (sentAt populated either way).
 export interface Announcement {
   id: string;
   orgId: string;
@@ -94,6 +99,10 @@ export interface Announcement {
   scheduledAt: string; // ISO datetime
   sentAt: string | null;
   createdAt: string; // ISO datetime
+  recipientCount: number | null;
+  sentCount: number | null;
+  skippedCount: number | null;
+  failedCount: number | null;
 }
 
 export interface AppUser {

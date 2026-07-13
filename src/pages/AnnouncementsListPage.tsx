@@ -5,6 +5,34 @@ import type { Announcement, Department } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
 import { AnnouncementDrawer } from "../components/AnnouncementDrawer";
 
+// sent_at alone can't distinguish "delivered to everyone" from "delivered
+// to no one" (e.g. every recipient's phone number failing the E.164
+// check) — both used to render as a plain "sent" badge. recipientCount/
+// sentCount are null for rows sent before this tracking existed (or in
+// mock mode, where nothing simulates the Supabase-only cron function) —
+// those fall back to the old plain "sent" label rather than showing a
+// misleading "0/undefined".
+function deliveryStatus(announcement: Announcement): { label: string; className: string } {
+  if (!announcement.sentAt) {
+    return { label: "pending", className: "bg-amber-clay/15 text-amber-clay" };
+  }
+  const total = announcement.recipientCount;
+  const sent = announcement.sentCount;
+  if (total === null || sent === null) {
+    return { label: "sent", className: "bg-forest/10 text-forest" };
+  }
+  if (total === 0) {
+    return { label: "sent (no recipients)", className: "bg-neutral-100 text-ink/60" };
+  }
+  if (sent === total) {
+    return { label: "sent", className: "bg-forest/10 text-forest" };
+  }
+  if (sent === 0) {
+    return { label: `sent (0/${total} delivered)`, className: "bg-destructive/10 text-destructive" };
+  }
+  return { label: `sent (${sent}/${total})`, className: "bg-amber-clay/15 text-amber-clay" };
+}
+
 export function AnnouncementsListPage() {
   const { user } = useAuth();
   const orgId = user!.orgId;
@@ -92,15 +120,16 @@ export function AnnouncementsListPage() {
                       {new Date(announcement.scheduledAt).toLocaleString()}
                     </td>
                     <td className="px-6 py-3">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
-                          announcement.sentAt
-                            ? "bg-forest/10 text-forest"
-                            : "bg-amber-clay/15 text-amber-clay"
-                        }`}
-                      >
-                        {announcement.sentAt ? "sent" : "pending"}
-                      </span>
+                      {(() => {
+                        const status = deliveryStatus(announcement);
+                        return (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${status.className}`}
+                          >
+                            {status.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-3">
                       {!announcement.sentAt && (

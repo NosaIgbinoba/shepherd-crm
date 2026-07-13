@@ -42,6 +42,10 @@ export const mockAnnouncements: AnnouncementRepository = {
       scheduledAt: data.scheduledAt,
       sentAt: null,
       createdAt: new Date().toISOString(),
+      recipientCount: null,
+      sentCount: null,
+      skippedCount: null,
+      failedCount: null,
     };
     announcements.push(announcement);
     save(announcements);

@@ -102,7 +102,27 @@ Deno.serve(async (req) => {
       sent.push({ recipient: recipient.name, ...sendResult });
     }
 
-    await supabase.from("announcements").update({ sent_at: nowIso }).eq("id", announcement.id);
+    // These counts were always computable from `sent` but never persisted —
+    // an announcement that reached 0 of N recipients (e.g. every phone
+    // number failing the E.164 check) looked identical to one that reached
+    // all N. Both still get sent_at, preserving the existing
+    // never-retry-automatically idempotency; the counts just make a silent
+    // total failure visible in the admin UI instead of indistinguishable
+    // from success.
+    const sentCount = sent.filter((s) => "ok" in s && s.ok).length;
+    const skippedCount = sent.filter((s) => "skipped" in s).length;
+    const failedCount = sent.filter((s) => "ok" in s && !s.ok).length;
+
+    await supabase
+      .from("announcements")
+      .update({
+        sent_at: nowIso,
+        recipient_count: recipients.length,
+        sent_count: sentCount,
+        skipped_count: skippedCount,
+        failed_count: failedCount,
+      })
+      .eq("id", announcement.id);
     results.push({ announcement: announcement.id, recipientCount: recipients.length, sent });
   }
 

@@ -572,6 +572,12 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   the literal scope asked for. A usher typo currently has no in-app fix
   path — would need a direct SQL correction. Revisit if that's a real
   problem in practice.
+- **Two live members still have bad phone data**: John Fakoyede (blank)
+  and Samuel Okafor (`555-0102`, placeholder-looking) — left untouched
+  per explicit instruction during the 2026-07-13 announcement-delivery
+  bug fix. Both will keep silently failing the E.164 check (now at
+  least visibly, via the new delivery-count badge) until real numbers
+  are added.
 - **Timezone handling is naive**: birthday matching uses UTC month/day, and
   the cron schedule is a fixed UTC time chosen to match Ireland's *current*
   offset (UTC+1, Irish Summer Time). `pg_cron` doesn't auto-adjust for DST,
@@ -983,6 +989,63 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   straight to disk without it ever appearing in visible output, then
   verified live-mode login worked before continuing. No schema
   changes this round.
+- **2026-07-13** — Bug fix: scheduled announcements appearing "sent" but
+  not actually delivered. Used the `debugger` subagent per explicit
+  request; investigated in the order asked (scheduling bug first, then
+  delivery) rather than guessing at a fix upfront. **Scheduling itself
+  was fine** — `send-announcements`'s `.lte("scheduled_at", nowIso)` is
+  a correct comparison (not the exact-match bug hypothesized), and
+  `AnnouncementDrawer`'s `datetime-local` → `.toISOString()` conversion
+  correctly handles the browser's local timezone — not the same class
+  of bug as `birthday-check-daily`'s fixed-UTC-cron DST caveat. Verified
+  against live data: both recent test announcements had `sent_at`
+  populated within a second of their `scheduled_at`, confirming the cron
+  fired correctly and on time.
+
+  **Real root cause was delivery**, and it was silent: all 5 recipients
+  of both test announcements (the `worker` tag) had phone numbers
+  failing `isE164()` — blank, a stray space, a placeholder-looking
+  number, and two in Irish local format instead of E.164. Zero
+  Twilio sends were ever attempted, but `send-announcements/index.ts`
+  marked `sent_at` unconditionally regardless of outcome, and the admin
+  UI's status badge was a plain binary sent/pending — so 0-of-5
+  delivered was visually indistinguishable from 5-of-5.
+
+  Fixed both requested angles: (1) **schema** — new
+  `0009_announcement_delivery_tracking.sql` adds
+  `recipient_count`/`sent_count`/`skipped_count`/`failed_count`
+  (nullable — null for rows sent before this migration, which
+  `AnnouncementsListPage`'s badge logic falls back to a plain "sent"
+  label for rather than showing a broken "0/undefined"); the Edge
+  Function now persists counts it was already computing but discarding.
+  The admin badge shows a plain "sent" only when delivery was 100%,
+  and a specific count (`sent (0/5 delivered)`, styled as a warning) the
+  moment any recipient wasn't reached — no more silent full failures.
+  (2) **Data** — asked before touching anything, since two members
+  shared an identical phone number and two others had no real number to
+  convert to. Confirmed: Nosa/Grace Adeyemi's shared number is
+  intentional (reformatted to E.164, digits unchanged), Adesewa's
+  stray space removed (confirmed separately — it wasn't part of either
+  original question, so wasn't authorized by the earlier answers). Left
+  John Fakoyede (blank) and Samuel Okafor (placeholder-looking number)
+  untouched per explicit instruction — see "Open decisions". (Real
+  phone numbers deliberately not written here — this file is public.)
+
+  Deployed: `supabase db push` (0009), `supabase functions deploy
+  send-announcements`, confirmed via `supabase migration list` and a
+  401-without-header check (couldn't test-invoke with the real
+  `CRON_SECRET` — Supabase secrets are write-only via the CLI, no way
+  to read one back once set). Already scheduled via `pg_cron` from
+  Phase 6.5, so no rescheduling needed — picks up the fix on its next
+  5-minute run automatically. Verified the new badge logic (pending /
+  plain sent / partial / total-failure / legacy-null-safe) via
+  Playwright in mock mode across all 5 states, zero console errors.
+  Throughout, fetched the Supabase `service_role` key only via
+  in-process scripts that use it directly without ever printing or
+  persisting it to disk — flagged once by the permission system for
+  reading production member PII (legitimate, requested investigation)
+  and once for writing a key to a temp file (correctly blocked; redone
+  via an in-memory `fetch` instead).
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
