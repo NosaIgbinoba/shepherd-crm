@@ -578,6 +578,34 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   bug fix. Both will keep silently failing the E.164 check (now at
   least visibly, via the new delivery-count badge) until real numbers
   are added.
+- **WhatsApp 24-hour session window — affects all four automations, not
+  fixed yet**: discovered 2026-07-13 chasing a "test announcement sent
+  but never arrived" report, right after the delivery-tracking fix
+  above (which correctly showed `sent_count` going up — Twilio's
+  synchronous API call succeeds/queues the message). The actual failure
+  is async and invisible to our code: Twilio error 63016, "outside the
+  allowed window" — WhatsApp only allows free-form (non-template)
+  messages within 24 hours of the recipient last messaging the
+  business's WhatsApp number. Every message this app sends
+  (`birthday-check`, `event-reminder`, `newcomer-welcome`,
+  `send-announcements`) is business-initiated, never a reply, so in real
+  use the window will almost always be closed by send time — this isn't
+  a Sandbox-only quirk, it's the underlying WhatsApp Business Platform
+  rule (the Sandbox's own "join" 3-day session is a separate, additional
+  restriction on top of it). Explains why delivery "worked" when
+  confirmed in earlier phases: those tests ran shortly after a fresh
+  Sandbox join, while the window was still open. Short-term test
+  workaround: send any message from the recipient's phone to the Twilio
+  number to reopen the window, then send a **new** test (already-`sent_at`
+  rows don't retry). **Real fix, deferred until later**: register
+  WhatsApp Message Templates via Twilio's Content API, get them approved
+  by WhatsApp/Meta (hours to days, outside our control), and switch all
+  four Edge Functions from raw `Body` text to `ContentSid` +
+  `ContentVariables`. Separately worth doing regardless: `_shared/
+  twilio.ts`'s `sendWhatsAppMessage` only checks the synchronous HTTP
+  response and never captures the Twilio message SID or final delivery
+  status — there's currently no way to look up what actually happened to
+  a "sent" message without checking Twilio Console by hand.
 - **Timezone handling is naive**: birthday matching uses UTC month/day, and
   the cron schedule is a fixed UTC time chosen to match Ireland's *current*
   offset (UTC+1, Irish Summer Time). `pg_cron` doesn't auto-adjust for DST,
@@ -1046,6 +1074,19 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   reading production member PII (legitimate, requested investigation)
   and once for writing a key to a temp file (correctly blocked; redone
   via an in-memory `fetch` instead).
+- **2026-07-13** — Follow-up same day: user reported a new test
+  announcement still never arrived, even after the delivery-tracking
+  fix above. Queried the live `announcements` table again (same
+  in-process key-fetch pattern) — confirmed the fix itself was working
+  correctly: both new test rows were picked up right at the next
+  `*/5 * * * *` cron tick and showed `sent_count: 3` (Twilio's
+  synchronous API accepted the send). User then checked Twilio Console
+  directly and found the real cause: error 63016, the WhatsApp 24-hour
+  session window. Documented as its own "Open decisions" entry — see
+  there for full detail. Deferred the real fix (WhatsApp Message
+  Templates via Twilio's Content API) until later, per explicit
+  request; user reopened their own test window by messaging the
+  Sandbox number from their phone in the meantime.
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.
