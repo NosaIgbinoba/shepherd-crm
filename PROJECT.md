@@ -1107,6 +1107,14 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   labels, deleting a sent announcement leaves an unrelated pending one
   untouched, deleting both a manual and a Google-synced event (each
   with its own confirm-dialog wording) — zero console errors.
+- **2026-07-14** — Cleanup: long announcement messages in
+  `AnnouncementsListPage`'s table were truncating with no way to read
+  the rest short of opening dev tools. Made the message cell a button
+  that opens a small centered modal (dimmed backdrop, closes via the X
+  or clicking outside) showing the full text with preserved
+  line-breaks. Verified via Playwright (real overflow check via
+  `scrollWidth`/`clientWidth`, not just truncation-implies-shorter-text,
+  which doesn't hold — `textContent` ignores CSS truncation).
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { announcementsDb, departmentsDb } from "../lib/db";
 import type { Announcement, Department } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
@@ -41,6 +41,7 @@ export function AnnouncementsListPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [previewMessage, setPreviewMessage] = useState<string | null>(null);
 
   async function refresh() {
     const [announcementList, departmentList] = await Promise.all([
@@ -112,8 +113,14 @@ export function AnnouncementsListPage() {
               ) : (
                 announcements.map((announcement) => (
                   <tr key={announcement.id} className="border-t border-border">
-                    <td className="max-w-xs truncate px-6 py-3 font-medium">
-                      {announcement.message}
+                    <td className="max-w-xs px-6 py-3 font-medium">
+                      <button
+                        onClick={() => setPreviewMessage(announcement.message)}
+                        className="block max-w-full truncate text-left hover:text-forest hover:underline"
+                        title="Click to view full message"
+                      >
+                        {announcement.message}
+                      </button>
                     </td>
                     <td className="px-6 py-3 text-ink/70">{targetLabel(announcement)}</td>
                     <td className="px-6 py-3 text-ink/60">
@@ -154,6 +161,32 @@ export function AnnouncementsListPage() {
           onClose={() => setCreating(false)}
           onSaved={refresh}
         />
+      )}
+
+      {previewMessage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-6"
+          onClick={() => setPreviewMessage(null)}
+        >
+          <div
+            className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-6 ring-1 ring-black/5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Full message</h3>
+              <button
+                onClick={() => setPreviewMessage(null)}
+                aria-label="Close"
+                className="rounded-lg p-1 text-ink/40 hover:bg-neutral-100 hover:text-ink/70"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+            <p className="whitespace-pre-wrap break-words text-sm text-ink/80">
+              {previewMessage}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );
