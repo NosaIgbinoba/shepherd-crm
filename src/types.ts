@@ -12,6 +12,10 @@ export interface Organization {
   name: string;
   address: string;
   createdAt: string; // ISO date
+  // Sent by newcomer-welcome the moment a member is tagged "newcomer".
+  // "{name}" is replaced with the member's name. Admin-editable via
+  // /settings rather than hardcoded, since wording varies by church.
+  newcomerDepartmentMessage: string;
 }
 
 export interface Member {

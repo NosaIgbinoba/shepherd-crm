@@ -11,6 +11,7 @@ import { EventsListPage } from "./pages/EventsListPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { AttendancePage } from "./pages/AttendancePage";
 import { AnnouncementsListPage } from "./pages/AnnouncementsListPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import { HomePage } from "./pages/public/HomePage";
 import { JoinPage } from "./pages/public/JoinPage";
 import { PublicEventsPage } from "./pages/public/PublicEventsPage";
@@ -105,6 +106,16 @@ function App() {
               <ProtectedRoute>
                 <Layout>
                   <AnnouncementsListPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SettingsPage />
                 </Layout>
               </ProtectedRoute>
             }

@@ -5,6 +5,8 @@ export const SEED_ORG: Organization = {
   name: "JPD Church",
   address: "1 Cathedral Way",
   createdAt: "2024-01-01T00:00:00.000Z",
+  newcomerDepartmentMessage:
+    "Hi {name}! If you'd like to get plugged into a department, reply to this message or ask an admin.",
 };
 
 export const SEED_MEMBERS: Member[] = [

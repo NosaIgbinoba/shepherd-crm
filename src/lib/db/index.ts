@@ -13,6 +13,8 @@ import { mockAnnouncements } from "./mockAnnouncements";
 import { supabaseAnnouncements } from "./supabaseAnnouncements";
 import { mockAttendance } from "./mockAttendance";
 import { supabaseAttendance } from "./supabaseAttendance";
+import { mockOrganizations } from "./mockOrganizations";
+import { supabaseOrganizations } from "./supabaseOrganizations";
 import type {
   AnnouncementRepository,
   AttendanceRepository,
@@ -20,6 +22,7 @@ import type {
   EventRepository,
   JoinRequestRepository,
   MemberRepository,
+  OrganizationRepository,
   RsvpRepository,
 } from "./types";
 
@@ -49,6 +52,10 @@ export const attendanceDb: AttendanceRepository = isSupabaseConfigured
   ? supabaseAttendance
   : mockAttendance;
 
+export const organizationsDb: OrganizationRepository = isSupabaseConfigured
+  ? supabaseOrganizations
+  : mockOrganizations;
+
 export type {
   AnnouncementRepository,
   AttendanceRepository,
@@ -56,5 +63,6 @@ export type {
   EventRepository,
   JoinRequestRepository,
   MemberRepository,
+  OrganizationRepository,
   RsvpRepository,
 } from "./types";

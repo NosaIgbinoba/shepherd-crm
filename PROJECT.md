@@ -588,7 +588,8 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   messages within 24 hours of the recipient last messaging the
   business's WhatsApp number. Every message this app sends
   (`birthday-check`, `event-reminder`, `newcomer-welcome`,
-  `send-announcements`) is business-initiated, never a reply, so in real
+  `newcomer-followup`, `send-announcements`) is business-initiated, never a
+  reply, so in real
   use the window will almost always be closed by send time — this isn't
   a Sandbox-only quirk, it's the underlying WhatsApp Business Platform
   rule (the Sandbox's own "join" 3-day session is a separate, additional
@@ -1115,6 +1116,50 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   line-breaks. Verified via Playwright (real overflow check via
   `scrollWidth`/`clientWidth`, not just truncation-implies-shorter-text,
   which doesn't hold — `textContent` ignores CSS truncation).
+- **2026-07-14 (demo prep)** — User caught that `newcomer-welcome`'s
+  single hardcoded message ("Welcome, [name]! We're so glad you joined
+  us...") double-counted the welcome: the in-person welcome team already
+  greets newcomers, so a WhatsApp message re-welcoming them was redundant,
+  and it also baked the department-recruitment ask into that same
+  "welcome" framing. Split into two distinct flows and made the first one
+  admin-editable rather than another hardcoded string:
+  - `newcomer-welcome` (unchanged trigger/cadence — fires immediately on
+    the "newcomer" tag) now sends `organizations
+    .newcomer_department_message`, a per-org template with a `{name}`
+    placeholder, edited via a new **`/settings`** page (new
+    `OrganizationRepository`, mock + Supabase, following the existing
+    repository-interface pattern). Default copy: "Hi {name}! If you'd
+    like to get plugged into a department, reply to this message or ask
+    an admin." — no "welcome" language, matching the request that this
+    message not double as one.
+  - New **`newcomer-followup`** Edge Function, fixed (non-editable) copy
+    — "Hey [name], thanks again for joining us today — hope you were
+    blessed by the service! Feel free to reach out anytime." — scheduled
+    once daily at `0 17 * * *` UTC (6pm Irish Summer Time, same DST-drift
+    caveat as `birthday-check-daily`). Queries members tagged "newcomer"
+    with `joined_at = current_date` and `newcomer_followup_sent_at is
+    null`, same idempotency pattern as the other automations.
+  - Migration `0010_newcomer_messages.sql`: adds
+    `organizations.newcomer_department_message` (with the default copy
+    above) and `members.newcomer_followup_sent_at`; also adds an UPDATE
+    RLS policy on `organizations` (`auth_org_id()`-scoped) — it previously
+    had only a SELECT policy, so admins couldn't have edited this even
+    before the new column existed.
+  - Built and typechecked (`tsc --noEmit` + `vite build` both clean) but
+    **not yet deployed live** — no `supabase db push`, no `supabase
+    functions deploy`, no `pg_cron` scheduling done yet. Pending the
+    user's go-ahead before touching production, since this changes what
+    real newcomers receive.
+- **2026-07-13/14 (demo prep)** — Same session: found and deleted 10
+  leftover test/debug rows in the live `announcements` table (messages
+  like "test", "b", "Hi", and 3 duplicate sends of a real-looking
+  "Workers + Minister meeting" reminder, all from the 2026-07-13
+  delivery-tracking bug fix) — all showed partial-delivery badges
+  (`3/5`, `1/2` etc.) that would've been visible to the pastor/admins in
+  a demo. Checked `events` too — only 2 real events exist there, no
+  cleanup needed. Confirmed live-database reads/deletes only after
+  explicit per-command user confirmation (the auto-mode permission
+  classifier blocks direct production SQL by default).
 
 **Live**: [shepherd-crm-six.vercel.app](https://shepherd-crm-six.vercel.app)
 — auto-deploys on every push to `main`.

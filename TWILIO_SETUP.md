@@ -4,10 +4,14 @@
 it was set up and how to redeploy/rotate things later — not a pending
 checklist anymore.
 
-Four scheduled WhatsApp flows exist:
+Five scheduled WhatsApp flows exist:
 - `birthday-check` (daily) — birthday messages
 - `event-reminder` (hourly) — reminders to everyone who RSVP'd "yes"
-- `newcomer-welcome` (every 15 min) — welcome message for members tagged "newcomer"
+- `newcomer-welcome` (every 15 min) — department-ask message for members
+  tagged "newcomer", using the org's admin-editable
+  `newcomer_department_message` template (see `/settings`) — not hardcoded
+- `newcomer-followup` (daily, evening) — same-day check-in about the
+  service for members tagged "newcomer" today; fixed copy, not editable
 - `send-announcements` (every 5 min) — admin-composed broadcasts to a tag or department
 
 ## 1. Schema
@@ -17,6 +21,7 @@ Run, in order, in **SQL Editor** (already done):
 - `supabase/migrations/0003_event_reminders.sql`
 - `supabase/migrations/0004_automations.sql`
 - `supabase/migrations/0005_security_hardening.sql`
+- `supabase/migrations/0010_newcomer_messages.sql`
 
 ## 2. Twilio account + WhatsApp Sandbox
 
@@ -67,6 +72,7 @@ they'll start getting 401s.
 supabase functions deploy birthday-check
 supabase functions deploy event-reminder
 supabase functions deploy newcomer-welcome
+supabase functions deploy newcomer-followup
 supabase functions deploy send-announcements
 ```
 
@@ -111,6 +117,8 @@ verify):
   hour when Ireland falls back to GMT — `pg_cron` doesn't adjust for DST)
 - `event-reminder-hourly` — `0 * * * *`
 - `newcomer-welcome-15min` — `*/15 * * * *`
+- `newcomer-followup-daily` — `0 17 * * *` (6pm Irish Summer Time; same
+  DST drift caveat as birthday-check-daily)
 - `send-announcements-5min` — `*/5 * * * *`
 
 To change a job's schedule or command: `select cron.unschedule('<job-name>');`

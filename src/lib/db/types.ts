@@ -7,6 +7,7 @@ import type {
   JoinRequest,
   JoinRequestStatus,
   Member,
+  Organization,
   Rsvp,
   RsvpStatus,
 } from "../../types";
@@ -121,4 +122,12 @@ export interface NewAttendanceRecord {
 export interface AttendanceRepository {
   listAttendanceRecords(orgId: string): Promise<AttendanceRecord[]>;
   createAttendanceRecord(orgId: string, data: NewAttendanceRecord): Promise<AttendanceRecord>;
+}
+
+// Only newcomerDepartmentMessage is editable via /settings today — name/
+// address have no UI yet, so this stays narrow rather than a general
+// updateOrganization(data: Partial<Organization>).
+export interface OrganizationRepository {
+  getOrganization(orgId: string): Promise<Organization>;
+  updateNewcomerDepartmentMessage(orgId: string, message: string): Promise<Organization>;
 }

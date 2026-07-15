@@ -9,6 +9,7 @@ import {
   ClipboardCheck,
   BarChart3,
   Sparkles,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -25,6 +26,7 @@ const nav = [
   { to: "/calendar", label: "Calendar", icon: CalendarSync },
   { to: "/attendance", label: "Attendance", icon: BarChart3 },
   { to: "/announcements", label: "Announcements", icon: Sparkles },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 const titles: Record<string, string> = {
@@ -36,6 +38,7 @@ const titles: Record<string, string> = {
   "/calendar": "Calendar",
   "/attendance": "Attendance",
   "/announcements": "Announcements",
+  "/settings": "Settings",
 };
 
 function pageTitle(pathname: string): string {

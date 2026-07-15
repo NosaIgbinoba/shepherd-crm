@@ -1,15 +1,20 @@
-// Runs on a schedule (recommend every 15 min — see TWILIO_SETUP.md). Finds
-// members tagged "newcomer" who haven't had a welcome message sent yet and
-// WhatsApps them one, using the org's admin-editable
-// organizations.newcomer_department_message template (edited via
-// /settings) — not a hardcoded "welcome" message, since the welcome team
-// already greets newcomers in person. See also newcomer-followup, a
-// separate evening message.
+// Runs once daily in the evening (recommend 6pm Irish time — see
+// TWILIO_SETUP.md). Finds members tagged "newcomer" whose newcomer tag was
+// set today (joined_at = today) and who haven't had this evening follow-up
+// sent yet, and WhatsApps them a check-in about the service.
 //
-// newcomer_welcome_sent_at makes this idempotent regardless of cron
-// cadence, and regardless of how a member ended up tagged "newcomer"
-// (manual entry, or an approved join request) — anything that sets the
-// tag gets picked up here.
+// Deliberately separate from newcomer-welcome (which fires immediately on
+// tagging, asking about departments): this one is a same-day follow-up
+// about the service itself, not a repeat welcome — the welcome team
+// already greets newcomers in person, and newcomer-welcome already covers
+// the department ask. Fixed copy, not admin-editable (unlike
+// newcomer-welcome's organizations.newcomer_department_message).
+//
+// newcomer_followup_sent_at makes this idempotent regardless of cron
+// cadence. joined_at defaults to the DB's current_date at insert time
+// (manual entry or an approved join request), so comparing it to
+// current_date here stays consistent as long as both evaluate in the same
+// server timezone (UTC) on the same calendar day.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getTwilioConfig, isE164, sendWhatsAppMessage } from "../_shared/twilio.ts";
 import { requireCronSecret } from "../_shared/auth.ts";
@@ -40,30 +45,17 @@ Deno.serve(async (req) => {
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+  const today = new Date().toISOString().slice(0, 10);
+
   const { data: members, error } = await supabase
     .from("members")
-    .select("id, org_id, name, phone, tags")
-    .is("newcomer_welcome_sent_at", null)
+    .select("id, name, phone, tags, joined_at")
+    .is("newcomer_followup_sent_at", null)
+    .eq("joined_at", today)
     .contains("tags", ["newcomer"]);
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  }
-
-  // Cached per org_id — the message is admin-editable per church (see
-  // /settings), not hardcoded, so this can't be a single constant string.
-  const templateCache = new Map<string, string>();
-  async function templateFor(orgId: string): Promise<string> {
-    const cached = templateCache.get(orgId);
-    if (cached) return cached;
-    const { data, error: orgError } = await supabase
-      .from("organizations")
-      .select("newcomer_department_message")
-      .eq("id", orgId)
-      .single();
-    if (orgError) throw orgError;
-    templateCache.set(orgId, data.newcomer_department_message);
-    return data.newcomer_department_message;
   }
 
   const results = [];
@@ -72,22 +64,21 @@ Deno.serve(async (req) => {
       results.push({ member: member.name, skipped: "phone not in E.164 format" });
       continue;
     }
-    const template = await templateFor(member.org_id);
     const sendResult = await sendWhatsAppMessage(
       twilio,
       member.phone,
-      template.replace(/\{name\}/g, member.name)
+      `Hey ${member.name}, thanks again for joining us today — hope you were blessed by the service! Feel free to reach out anytime.`
     );
     if (sendResult.ok) {
       await supabase
         .from("members")
-        .update({ newcomer_welcome_sent_at: new Date().toISOString() })
+        .update({ newcomer_followup_sent_at: new Date().toISOString() })
         .eq("id", member.id);
     }
     results.push({ member: member.name, ...sendResult });
   }
 
-  return new Response(JSON.stringify({ checked: members?.length ?? 0, welcomed: results }), {
+  return new Response(JSON.stringify({ checked: members?.length ?? 0, followedUp: results }), {
     headers: { "Content-Type": "application/json" },
   });
 });
