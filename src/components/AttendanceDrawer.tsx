@@ -49,7 +49,7 @@ export function AttendanceDrawer({
 
   return (
     <Sheet open onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex w-full max-w-md flex-col gap-0 p-0">
+      <SheetContent className="flex w-full flex-col gap-0 p-0 md:max-w-md">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-lg font-semibold">Log attendance</h2>
         </div>

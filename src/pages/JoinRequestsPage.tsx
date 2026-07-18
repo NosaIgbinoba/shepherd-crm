@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { db, departmentsDb, joinRequestsDb } from "../lib/db";
-import type { Department, JoinRequest, JoinRequestStatus } from "../types";
+import type { Department, JoinRequest, JoinRequestStatus, Member } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
+import { JoinRequestDrawer } from "../components/JoinRequestDrawer";
 
 const statusStyles: Record<JoinRequestStatus, string> = {
   pending: "bg-amber-clay/15 text-amber-clay",
@@ -14,17 +15,21 @@ export function JoinRequestsPage() {
   const orgId = user!.orgId;
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<JoinRequest | null>(null);
 
   async function refresh() {
-    const [requestList, departmentList] = await Promise.all([
+    const [requestList, departmentList, memberList] = await Promise.all([
       joinRequestsDb.listJoinRequests(orgId),
       departmentsDb.listDepartments(orgId),
+      db.listMembers(orgId),
     ]);
     setRequests(requestList);
     setDepartments(departmentList);
+    setMembers(memberList);
     setLoading(false);
   }
 
@@ -70,6 +75,7 @@ export function JoinRequestsPage() {
 
       await joinRequestsDb.updateJoinRequestStatus(orgId, request.id, "approved", member.id);
       await refresh();
+      setSelected(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve request");
     } finally {
@@ -83,6 +89,7 @@ export function JoinRequestsPage() {
     try {
       await joinRequestsDb.updateJoinRequestStatus(orgId, request.id, "rejected", null);
       await refresh();
+      setSelected(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to reject request");
     } finally {
@@ -103,25 +110,28 @@ export function JoinRequestsPage() {
                 <Th>Contact</Th>
                 <Th>Department</Th>
                 <Th>Status</Th>
-                <th></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                  <td colSpan={4} className="p-10 text-center text-sm text-ink/40">
                     Loading join requests...
                   </td>
                 </tr>
               ) : requests.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-10 text-center text-sm text-ink/40">
+                  <td colSpan={4} className="p-10 text-center text-sm text-ink/40">
                     No join requests yet.
                   </td>
                 </tr>
               ) : (
                 requests.map((request) => (
-                  <tr key={request.id} className="border-t border-border">
+                  <tr
+                    key={request.id}
+                    onClick={() => setSelected(request)}
+                    className="cursor-pointer border-t border-border hover:bg-neutral-50"
+                  >
                     <td className="px-6 py-3 font-medium">{request.requesterName}</td>
                     <td className="px-6 py-3 text-ink/70">
                       {request.requesterPhone}
@@ -137,26 +147,6 @@ export function JoinRequestsPage() {
                         {request.status}
                       </span>
                     </td>
-                    <td className="px-6 py-3">
-                      {request.status === "pending" && (
-                        <div className="flex gap-2">
-                          <button
-                            disabled={actioningId === request.id}
-                            onClick={() => handleApprove(request)}
-                            className="rounded-lg bg-forest px-3 py-1 text-xs text-white hover:bg-forest/90 disabled:opacity-60"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            disabled={actioningId === request.id}
-                            onClick={() => handleReject(request)}
-                            className="rounded-lg border border-border px-3 py-1 text-xs hover:bg-neutral-50 disabled:opacity-60"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                    </td>
                   </tr>
                 ))
               )}
@@ -164,6 +154,18 @@ export function JoinRequestsPage() {
           </table>
         </div>
       </div>
+
+      {selected && (
+        <JoinRequestDrawer
+          request={selected}
+          departments={departments}
+          members={members}
+          actioning={actioningId === selected.id}
+          onClose={() => setSelected(null)}
+          onApprove={handleApprove}
+          onReject={handleReject}
+        />
+      )}
     </div>
   );
 }
