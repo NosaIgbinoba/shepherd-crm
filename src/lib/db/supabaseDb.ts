@@ -76,6 +76,16 @@ export const supabaseDb: MemberRepository = {
     return rowToMember(inserted as MemberRow);
   },
 
+  async createMembers(orgId, data) {
+    if (data.length === 0) return [];
+    const { data: inserted, error } = await supabase!
+      .from("members")
+      .insert(data.map((row) => memberToRow(orgId, row)))
+      .select();
+    if (error) throw error;
+    return (inserted as MemberRow[]).map(rowToMember);
+  },
+
   async updateMember(orgId, memberId, data) {
     const { data: updated, error } = await supabase!
       .from("members")

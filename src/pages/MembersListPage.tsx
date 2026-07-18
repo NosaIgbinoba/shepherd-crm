@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search } from "lucide-react";
-import { db } from "../lib/db";
-import type { Member, MemberTag } from "../types";
+import { Plus, Search, Upload } from "lucide-react";
+import { db, departmentsDb } from "../lib/db";
+import type { Department, Member, MemberTag } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
 import { MemberDrawer } from "../components/MemberDrawer";
+import { ImportMembersDrawer } from "../components/ImportMembersDrawer";
 
 const ALL_TAGS: MemberTag[] = ["newcomer", "worker", "leader"];
 
@@ -17,14 +18,20 @@ export function MembersListPage() {
   const { user } = useAuth();
   const orgId = user!.orgId;
   const [members, setMembers] = useState<Member[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [tagFilter, setTagFilter] = useState<MemberTag | "all">("all");
   const [editing, setEditing] = useState<Member | "new" | null>(null);
+  const [importing, setImporting] = useState(false);
 
   async function refresh() {
-    const result = await db.listMembers(orgId);
-    setMembers(result);
+    const [memberList, departmentList] = await Promise.all([
+      db.listMembers(orgId),
+      departmentsDb.listDepartments(orgId),
+    ]);
+    setMembers(memberList);
+    setDepartments(departmentList);
     setLoading(false);
   }
 
@@ -66,6 +73,12 @@ export function MembersListPage() {
             </option>
           ))}
         </select>
+        <button
+          onClick={() => setImporting(true)}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm hover:bg-neutral-50"
+        >
+          <Upload className="size-3.5" /> Import
+        </button>
         <button
           onClick={() => setEditing("new")}
           className="inline-flex items-center gap-1 rounded-lg bg-forest px-3 py-2 text-sm text-white hover:bg-forest/90"
@@ -138,6 +151,15 @@ export function MembersListPage() {
           member={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={refresh}
+        />
+      )}
+
+      {importing && (
+        <ImportMembersDrawer
+          members={members}
+          departments={departments}
+          onClose={() => setImporting(false)}
+          onImported={refresh}
         />
       )}
     </div>

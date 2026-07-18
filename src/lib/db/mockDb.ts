@@ -50,6 +50,19 @@ export const mockDb: MemberRepository = {
     return member;
   },
 
+  async createMembers(orgId, data) {
+    await delay();
+    const members = load();
+    let nextNum = Number(nextId(members).replace(/^m/, ""));
+    const created = data.map((row) => {
+      const member: Member = { ...row, id: `m${nextNum}`, orgId };
+      nextNum += 1;
+      return member;
+    });
+    save([...members, ...created]);
+    return created;
+  },
+
   async updateMember(orgId, memberId, data) {
     await delay();
     const members = load();

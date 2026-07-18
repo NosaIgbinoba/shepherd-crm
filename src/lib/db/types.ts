@@ -19,6 +19,11 @@ export interface MemberRepository {
   listMembers(orgId: string): Promise<Member[]>;
   getMember(orgId: string, memberId: string): Promise<Member | null>;
   createMember(orgId: string, data: Omit<Member, "id" | "orgId">): Promise<Member>;
+  // Bulk create for spreadsheet import — one round-trip instead of N, since
+  // a church import batch can be 50+ rows. No partial-failure handling: all
+  // rows are expected to have already passed validation (see
+  // src/lib/importMembers.ts) before this is called.
+  createMembers(orgId: string, data: Omit<Member, "id" | "orgId">[]): Promise<Member[]>;
   updateMember(
     orgId: string,
     memberId: string,

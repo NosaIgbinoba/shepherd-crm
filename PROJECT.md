@@ -1210,6 +1210,66 @@ TypeScript types mirroring this live in `src/types.ts`. The Postgres schema
   full approve/reject flow end-to-end including the native confirm
   dialog, member creation, and status update; zero console errors
   throughout. `tsc --noEmit` and `vite build` both clean.
+- **2026-07-18** — Bulk member import from CSV/Excel, for churches
+  onboarding an existing roster instead of typing members in one at a
+  time. New "Import" button on `MembersListPage` opens
+  `ImportMembersDrawer` (wider than the standard drawer —
+  `md:max-w-2xl`, not `md:max-w-md`, since it needs room for a preview
+  table). Library choice mattered here: the obvious single-package
+  option, `xlsx` (SheetJS), has an unpatched high-severity advisory on
+  npm (SheetJS's fixed releases are only published to their own CDN, not
+  npm) — parsing untrusted admin-uploaded files with it wasn't worth
+  that risk, so used **`papaparse`** (CSV) + **`read-excel-file`**
+  (.xlsx/.xls) instead, both auditing clean. Hit one real bug getting
+  the latter working: its default export `readXlsxFile()` returns
+  `{sheet, data}[]` (all sheets in the workbook) in this version, not
+  rows directly — `rawRows[0].map is not a function` until switched to
+  its `readSheet()` export, which returns the first sheet's rows
+  directly as expected.
+
+  `src/lib/importMembers.ts`: parses either format into a uniform
+  `headers`/`rows` shape, then auto-detects which spreadsheet column
+  maps to which `Member` field via an alias table (e.g. "Full Name",
+  "Member Name" → name) — a hardcoded template would've forced every
+  church to reformat their existing spreadsheet first, which defeats
+  the point. Auto-detected mapping is shown as editable dropdowns (one
+  per field) so an admin can correct a wrong guess or map an unusual
+  header manually. Date cells handled explicitly rather than trusting
+  `new Date(string)` — Excel date-formatted cells arrive as real `Date`
+  objects (unambiguous), but a `DD/MM/YYYY` text string would be
+  silently misread as US `MM/DD/YYYY` by native parsing; this church is
+  Irish, so `DD/MM/YYYY` and ISO `YYYY-MM-DD` are parsed explicitly
+  before falling back to `new Date()`. Per-row validation: missing name
+  is a hard error (row skipped, not imported); an unrecognized
+  department name or a phone matching an existing member are warnings
+  only (row still imports) — surfaced in a preview table (first 10 rows,
+  status icon + note per row) before the admin commits, with a summary
+  line ("N ready, N skipped, N duplicates, N unmatched departments").
+  Deliberately does **not** auto-create a department for an unmatched
+  name or attempt phone-based merge/dedupe on import — same "don't
+  invent scope" posture as the existing `/join` no-dedupe limitation;
+  the row just imports with no department set.
+
+  New `MemberRepository.createMembers()` (batch insert — one round trip
+  for the whole file rather than N `createMember` calls) implemented in
+  both `mockDb` and `supabaseDb`. Department membership is kept in sync
+  the same way `JoinRequestsPage`'s single-approval flow already does
+  (updating `department.memberIds` alongside the member's own
+  `departmentIds`) — batched per distinct department across the whole
+  import, grouped by reading `departmentIds` back off each *returned*
+  created member rather than assuming the bulk-insert preserves input
+  order (Postgres doesn't guarantee that for a multi-row insert).
+
+  Verified via Playwright in mock mode (same temporary `--mode test` +
+  empty `.env.test.local` pattern as the previous session, real `.env
+  .local` never touched): both a `.csv` and a real `.xlsx` file
+  (generated via Python's `openpyxl`, since no JS package was worth
+  adding just to author a test fixture) — auto-mapping, the preview's
+  duplicate-phone and unmatched-department warnings, the missing-name
+  skip, and `department.memberIds` sync (confirmed the imported member
+  shows up as an active toggle in that department's own drawer, not
+  just on its own record) all behave correctly. `tsc --noEmit` and
+  `vite build` both clean, zero console errors.
 - **2026-07-13/14 (demo prep)** — Same session: found and deleted 10
   leftover test/debug rows in the live `announcements` table (messages
   like "test", "b", "Hi", and 3 duplicate sends of a real-looking
