@@ -1,5 +1,14 @@
-import { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon, MapPin, CalendarSync, Repeat, Link as LinkIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Plus,
+  Calendar as CalIcon,
+  MapPin,
+  CalendarSync,
+  Repeat,
+  Link as LinkIcon,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { eventsDb, rsvpsDb } from "../lib/db";
 import type { ChurchEvent, EventRecurrence, RsvpStatus } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
@@ -83,6 +92,43 @@ export function EventsListPage() {
   );
 }
 
+// A recurring series can generate many rows (e.g. 13 weekly instances).
+// Collapsed by default to just the earliest instance per series, with a
+// "+N more" toggle to expand in place — keeps the list scannable without
+// hiding any occurrence permanently.
+function useSeriesCollapse(events: ChurchEvent[]) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const { visible, seriesCounts, seriesHeadId } = useMemo(() => {
+    const seriesCounts = new Map<string, number>();
+    const seriesHeadId = new Map<string, string>();
+    events.forEach((event) => {
+      if (!event.seriesId) return;
+      seriesCounts.set(event.seriesId, (seriesCounts.get(event.seriesId) ?? 0) + 1);
+      if (!seriesHeadId.has(event.seriesId)) seriesHeadId.set(event.seriesId, event.id);
+    });
+    const seen = new Set<string>();
+    const visible = events.filter((event) => {
+      if (!event.seriesId || expanded.has(event.seriesId)) return true;
+      if (seen.has(event.seriesId)) return false;
+      seen.add(event.seriesId);
+      return true;
+    });
+    return { visible, seriesCounts, seriesHeadId };
+  }, [events, expanded]);
+
+  function toggle(seriesId: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(seriesId)) next.delete(seriesId);
+      else next.add(seriesId);
+      return next;
+    });
+  }
+
+  return { visible, seriesCounts, seriesHeadId, expanded, toggle };
+}
+
 function EventSection({
   title,
   events,
@@ -96,15 +142,20 @@ function EventSection({
   onEdit: (event: ChurchEvent) => void;
   muted?: boolean;
 }) {
+  const { visible, seriesCounts, seriesHeadId, expanded, toggle } = useSeriesCollapse(events);
+
   return (
     <section>
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-ink/40">
         {title}
       </h3>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {events.map((event) => {
+        {visible.map((event) => {
           const c = counts[event.id] ?? { yes: 0, no: 0, maybe: 0 };
           const total = c.yes + c.maybe + c.no;
+          const isSeriesHead = event.seriesId && seriesHeadId.get(event.seriesId) === event.id;
+          const seriesCount = event.seriesId ? seriesCounts.get(event.seriesId)! : 0;
+          const isExpanded = event.seriesId ? expanded.has(event.seriesId) : false;
           return (
             <div
               key={event.id}
@@ -132,6 +183,26 @@ function EventSection({
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-clay/10 px-2 py-0.5 text-[10px] font-medium text-amber-clay">
                     <Repeat className="size-2.5" /> {RECURRENCE_LABELS[event.recurrence]}
                   </span>
+                )}
+                {isSeriesHead && seriesCount > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggle(event.seriesId!);
+                    }}
+                    className="inline-flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-medium text-ink/50 hover:bg-neutral-100 hover:text-ink/70"
+                  >
+                    {isExpanded ? (
+                      <>
+                        <ChevronUp className="size-2.5" /> Show less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="size-2.5" /> +{seriesCount - 1} more
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-3 text-xs text-ink/60">
