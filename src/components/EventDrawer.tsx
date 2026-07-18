@@ -127,8 +127,9 @@ export function EventDrawer({
           seriesId: null,
         });
       } else {
+        const recurrence = form.recurrence;
         const seriesId = crypto.randomUUID();
-        const instanceDates = generateRecurrenceDates(new Date(form.date), form.recurrence);
+        const instanceDates = generateRecurrenceDates(new Date(form.date), recurrence);
         await eventsDb.createEvents(
           orgId,
           instanceDates.map((date) => ({
@@ -139,7 +140,7 @@ export function EventDrawer({
             reminderHoursBefore: form.reminderHoursBefore,
             source: "manual",
             googleEventId: null,
-            recurrence: form.recurrence,
+            recurrence,
             seriesId,
           }))
         );
