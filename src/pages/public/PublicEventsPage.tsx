@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Calendar as CalIcon, MapPin } from "lucide-react";
+import { Calendar as CalIcon, MapPin, Link as LinkIcon } from "lucide-react";
 import { eventsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
 import { PublicPageShell } from "../../components/PublicPageShell";
@@ -45,6 +45,16 @@ export function PublicEventsPage() {
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="size-3" /> {event.location}
                   </span>
+                )}
+                {event.link && (
+                  <a
+                    href={event.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-forest hover:underline"
+                  >
+                    <LinkIcon className="size-3" /> Join meeting
+                  </a>
                 )}
               </div>
               <Link

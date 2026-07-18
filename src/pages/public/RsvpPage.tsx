@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
+import { Link as LinkIcon } from "lucide-react";
 import { eventsDb, rsvpsDb } from "../../lib/db";
 import { PUBLIC_ORG_ID } from "../../lib/constants";
 import { useBotGuard } from "../../lib/useBotGuard";
@@ -96,6 +97,16 @@ export function RsvpPage() {
       <p className="mt-1 text-sm text-ink/60">
         {new Date(event.date).toLocaleString()} — {event.location}
       </p>
+      {event.link && (
+        <a
+          href={event.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-forest hover:underline"
+        >
+          <LinkIcon className="size-3.5" /> Join meeting
+        </a>
+      )}
 
       <form onSubmit={handleSubmit} className="mt-6 grid gap-3">
         <input

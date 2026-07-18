@@ -1,11 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, CalendarSync } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CalendarSync,
+  Repeat,
+} from "lucide-react";
 import { eventsDb } from "../lib/db";
-import type { ChurchEvent } from "../types";
+import type { ChurchEvent, EventRecurrence } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
 import { EventDrawer } from "../components/EventDrawer";
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
+  weekly: "Weekly",
+  biweekly: "Biweekly",
+  monthly: "Monthly",
+};
 
 function dateKey(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -170,11 +183,16 @@ export function CalendarPage() {
                                 ? "bg-amber-clay/15 text-amber-clay"
                                 : "bg-forest/10 text-forest"
                             }`}
-                            title={event.title}
+                            title={
+                              event.recurrence
+                                ? `${event.title} (${RECURRENCE_LABELS[event.recurrence]})`
+                                : event.title
+                            }
                           >
                             {event.source === "google" && (
                               <CalendarSync className="size-2.5 shrink-0" />
                             )}
+                            {event.recurrence && <Repeat className="size-2.5 shrink-0" />}
                             <span className="truncate">{event.title}</span>
                           </button>
                         ))}

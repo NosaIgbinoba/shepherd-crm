@@ -44,6 +44,19 @@ export const mockEvents: EventRepository = {
     return event;
   },
 
+  async createEvents(orgId, data) {
+    await delay();
+    const events = load();
+    let nextNum = Number(nextId(events).replace(/^ev/, ""));
+    const created = data.map((row) => {
+      const event: ChurchEvent = { ...row, id: `ev${nextNum}`, orgId };
+      nextNum += 1;
+      return event;
+    });
+    save([...events, ...created]);
+    return created;
+  },
+
   async updateEvent(orgId, eventId, data) {
     await delay();
     const events = load();

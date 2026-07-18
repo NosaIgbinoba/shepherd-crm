@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
-import { CalendarSync } from "lucide-react";
+import { CalendarSync, Link as LinkIcon, Repeat } from "lucide-react";
 import { Sheet, SheetContent } from "./ui/sheet";
 import { eventsDb } from "../lib/db";
-import type { ChurchEvent } from "../types";
+import type { ChurchEvent, EventRecurrence } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
+import { generateRecurrenceDates } from "../lib/recurrence";
 
 function toDatetimeLocal(iso: string): string {
   const date = new Date(iso);
@@ -13,11 +14,19 @@ function toDatetimeLocal(iso: string): string {
   )}:${pad(date.getMinutes())}`;
 }
 
+const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
+  weekly: "Weekly",
+  biweekly: "Biweekly",
+  monthly: "Monthly",
+};
+
 const emptyForm = {
   title: "",
   date: "",
   location: "",
+  link: "",
   reminderHoursBefore: 24,
+  recurrence: "none" as EventRecurrence | "none",
 };
 
 export function EventDrawer({
@@ -38,7 +47,9 @@ export function EventDrawer({
           title: event.title,
           date: toDatetimeLocal(event.date),
           location: event.location,
+          link: event.link ?? "",
           reminderHoursBefore: event.reminderHoursBefore,
+          recurrence: "none" as EventRecurrence | "none",
         }
       : emptyForm
   );
@@ -73,31 +84,65 @@ export function EventDrawer({
     e.preventDefault();
     setError(null);
     setSaving(true);
-    // For synced events, Google Calendar owns title/date/location — only
-    // reminderHoursBefore is admin-editable, so the rest is carried over
-    // from the existing event rather than taken from (disabled) form state.
-    const payload: Omit<ChurchEvent, "id" | "orgId"> = isGoogleSynced
-      ? {
+    try {
+      if (isGoogleSynced) {
+        // Google Calendar owns title/date/location/link/recurrence — only
+        // reminderHoursBefore is admin-editable, so the rest is carried
+        // over from the existing event rather than taken from form state.
+        await eventsDb.updateEvent(orgId, event!.id, {
           title: event!.title,
           date: event!.date,
           location: event!.location,
+          link: event!.link,
           reminderHoursBefore: form.reminderHoursBefore,
           source: event!.source,
           googleEventId: event!.googleEventId,
-        }
-      : {
+          recurrence: event!.recurrence,
+          seriesId: event!.seriesId,
+        });
+      } else if (event) {
+        // Editing an existing instance only affects that instance —
+        // recurrence/seriesId are carried over unchanged, not editable here.
+        await eventsDb.updateEvent(orgId, event.id, {
           title: form.title.trim(),
           date: new Date(form.date).toISOString(),
           location: form.location.trim(),
+          link: form.link.trim() || null,
           reminderHoursBefore: form.reminderHoursBefore,
           source: "manual",
           googleEventId: null,
-        };
-    try {
-      if (event) {
-        await eventsDb.updateEvent(orgId, event.id, payload);
+          recurrence: event.recurrence,
+          seriesId: event.seriesId,
+        });
+      } else if (form.recurrence === "none") {
+        await eventsDb.createEvent(orgId, {
+          title: form.title.trim(),
+          date: new Date(form.date).toISOString(),
+          location: form.location.trim(),
+          link: form.link.trim() || null,
+          reminderHoursBefore: form.reminderHoursBefore,
+          source: "manual",
+          googleEventId: null,
+          recurrence: null,
+          seriesId: null,
+        });
       } else {
-        await eventsDb.createEvent(orgId, payload);
+        const seriesId = crypto.randomUUID();
+        const instanceDates = generateRecurrenceDates(new Date(form.date), form.recurrence);
+        await eventsDb.createEvents(
+          orgId,
+          instanceDates.map((date) => ({
+            title: form.title.trim(),
+            date: date.toISOString(),
+            location: form.location.trim(),
+            link: form.link.trim() || null,
+            reminderHoursBefore: form.reminderHoursBefore,
+            source: "manual",
+            googleEventId: null,
+            recurrence: form.recurrence,
+            seriesId,
+          }))
+        );
       }
       onSaved();
       onClose();
@@ -168,6 +213,55 @@ export function EventDrawer({
               />
             )}
           </Field>
+
+          {!isGoogleSynced && (
+            <Field label="Meeting link (optional)">
+              <div className="flex items-center gap-2">
+                <input
+                  type="url"
+                  placeholder="https://zoom.us/j/..."
+                  value={form.link}
+                  onChange={(e) => setForm({ ...form, link: e.target.value })}
+                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-forest/20"
+                />
+                {form.link.trim() && (
+                  <a
+                    href={form.link.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-forest hover:underline"
+                  >
+                    <LinkIcon className="size-3" /> Open
+                  </a>
+                )}
+              </div>
+            </Field>
+          )}
+
+          {!isGoogleSynced && !event && (
+            <Field label="Repeats">
+              <select
+                value={form.recurrence}
+                onChange={(e) =>
+                  setForm({ ...form, recurrence: e.target.value as EventRecurrence | "none" })
+                }
+                className="w-full rounded-lg border border-border bg-canvas px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-forest/20"
+              >
+                <option value="none">None</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Biweekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </Field>
+          )}
+
+          {event?.seriesId && (
+            <div className="flex items-center gap-2 rounded-lg bg-amber-clay/10 px-3 py-2 text-xs text-amber-clay">
+              <Repeat className="size-3.5 shrink-0" />
+              Part of a {RECURRENCE_LABELS[event.recurrence!]} series — editing or deleting this
+              only affects this occurrence.
+            </div>
+          )}
 
           <div className="rounded-lg border border-dashed border-border p-3">
             <div className="mb-2 text-sm font-medium">Send WhatsApp reminder</div>

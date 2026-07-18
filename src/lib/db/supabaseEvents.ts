@@ -1,5 +1,5 @@
 import { supabase } from "../supabase/client";
-import type { ChurchEvent, EventSource } from "../../types";
+import type { ChurchEvent, EventRecurrence, EventSource } from "../../types";
 import type { EventRepository } from "./types";
 
 interface EventRow {
@@ -11,6 +11,9 @@ interface EventRow {
   reminder_hours_before: number;
   source: EventSource;
   google_event_id: string | null;
+  link: string | null;
+  recurrence: EventRecurrence | null;
+  series_id: string | null;
 }
 
 function rowToEvent(row: EventRow): ChurchEvent {
@@ -23,6 +26,9 @@ function rowToEvent(row: EventRow): ChurchEvent {
     reminderHoursBefore: row.reminder_hours_before,
     source: row.source,
     googleEventId: row.google_event_id,
+    link: row.link,
+    recurrence: row.recurrence,
+    seriesId: row.series_id,
   };
 }
 
@@ -35,6 +41,9 @@ function eventToRow(orgId: string, data: Omit<ChurchEvent, "id" | "orgId">) {
     reminder_hours_before: data.reminderHoursBefore,
     source: data.source,
     google_event_id: data.googleEventId,
+    link: data.link,
+    recurrence: data.recurrence,
+    series_id: data.seriesId,
   };
 }
 
@@ -68,6 +77,16 @@ export const supabaseEvents: EventRepository = {
       .single();
     if (error) throw error;
     return rowToEvent(inserted as EventRow);
+  },
+
+  async createEvents(orgId, data) {
+    if (data.length === 0) return [];
+    const { data: inserted, error } = await supabase!
+      .from("events")
+      .insert(data.map((row) => eventToRow(orgId, row)))
+      .select();
+    if (error) throw error;
+    return (inserted as EventRow[]).map(rowToEvent);
   },
 
   async updateEvent(orgId, eventId, data) {

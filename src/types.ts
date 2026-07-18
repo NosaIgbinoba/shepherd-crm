@@ -56,11 +56,18 @@ export interface JoinRequest {
 
 export type EventSource = "manual" | "google";
 
+export type EventRecurrence = "weekly" | "biweekly" | "monthly";
+
 // source/googleEventId track one-way Google Calendar -> CRM sync (Phase 11,
 // see PROJECT.md). Google Calendar is the source of truth for
 // source='google' events — title/date/location are synced in and read-only
 // in the CRM UI; only reminderHoursBefore is admin-editable on them, same
 // as manual events, since Google Calendar has no reminder-hours concept.
+// recurrence/seriesId apply to manual events only (Phase 14) — a recurring
+// series is just multiple independent rows sharing seriesId for display
+// grouping, not a shared entity; editing/deleting one instance never
+// touches its siblings. link is a plain optional URL (e.g. a Zoom link),
+// shown as-is with no link-type detection.
 export interface ChurchEvent {
   id: string;
   orgId: string;
@@ -70,6 +77,9 @@ export interface ChurchEvent {
   reminderHoursBefore: number;
   source: EventSource;
   googleEventId: string | null;
+  link: string | null;
+  recurrence: EventRecurrence | null;
+  seriesId: string | null;
 }
 
 // attendeeName/Phone are captured directly at RSVP time (public, no login)

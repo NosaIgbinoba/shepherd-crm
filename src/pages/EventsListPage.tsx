@@ -1,9 +1,15 @@
 import { useEffect, useState } from "react";
-import { Plus, Calendar as CalIcon, MapPin, CalendarSync } from "lucide-react";
+import { Plus, Calendar as CalIcon, MapPin, CalendarSync, Repeat, Link as LinkIcon } from "lucide-react";
 import { eventsDb, rsvpsDb } from "../lib/db";
-import type { ChurchEvent, RsvpStatus } from "../types";
+import type { ChurchEvent, EventRecurrence, RsvpStatus } from "../types";
 import { useAuth } from "../lib/auth/AuthContext";
 import { EventDrawer } from "../components/EventDrawer";
+
+const RECURRENCE_LABELS: Record<EventRecurrence, string> = {
+  weekly: "Weekly",
+  biweekly: "Biweekly",
+  monthly: "Monthly",
+};
 
 type RsvpCounts = Record<RsvpStatus, number>;
 
@@ -100,9 +106,17 @@ function EventSection({
           const c = counts[event.id] ?? { yes: 0, no: 0, maybe: 0 };
           const total = c.yes + c.maybe + c.no;
           return (
-            <button
+            <div
               key={event.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onEdit(event)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onEdit(event);
+                }
+              }}
               className={`rounded-xl bg-white p-5 text-left ring-1 ring-black/5 transition hover:ring-forest/30 ${
                 muted ? "opacity-70" : ""
               }`}
@@ -112,6 +126,11 @@ function EventSection({
                 {event.source === "google" && (
                   <span className="inline-flex items-center gap-1 rounded-full bg-forest/10 px-2 py-0.5 text-[10px] font-medium text-forest">
                     <CalendarSync className="size-2.5" /> Synced from Google
+                  </span>
+                )}
+                {event.recurrence && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-clay/10 px-2 py-0.5 text-[10px] font-medium text-amber-clay">
+                    <Repeat className="size-2.5" /> {RECURRENCE_LABELS[event.recurrence]}
                   </span>
                 )}
               </div>
@@ -130,6 +149,17 @@ function EventSection({
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="size-3" /> {event.location}
                   </span>
+                )}
+                {event.link && (
+                  <a
+                    href={event.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1 text-forest hover:underline"
+                  >
+                    <LinkIcon className="size-3" /> Join meeting
+                  </a>
                 )}
               </div>
               {total > 0 && (
@@ -151,7 +181,7 @@ function EventSection({
                   </div>
                 </div>
               )}
-            </button>
+            </div>
           );
         })}
         {events.length === 0 && (

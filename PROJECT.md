@@ -337,6 +337,30 @@ message + a fixed evening follow-up — DONE, fully live.** See Phase log
 new `/settings` page, and the `newcomer-followup` Edge Function are all
 live; `newcomer-followup-daily` cron confirmed scheduled.
 
+**Phase 14: recurring events + optional meeting link — DONE, fully
+live (2026-07-19).** Manual events (not `source='google'`) can now
+repeat weekly/biweekly/monthly and carry an optional `link` (e.g. a
+Zoom URL). Recurrence is fixed-window instance generation computed
+once at creation time (`src/lib/recurrence.ts`), not a live RRULE
+engine: weekly/biweekly stop after 12 weeks, monthly after 6 months.
+A series is multiple independent `events` rows sharing `series_id`
+for display grouping only, not a shared entity — editing or deleting
+one instance never touches its siblings, and `EventRepository` grew a
+batch `createEvents()` (one round trip for the whole series, mirroring
+`MemberRepository.createMembers()`). Google-synced events carry
+`link`/`recurrence`/`seriesId` through updates unchanged and never
+expose the edit UI for them, same pattern as the existing
+title/date/location lock. Migration `0011` applied to the live DB;
+verified in mock mode via Playwright (weekly series generated 13
+correctly-spaced instances, series notice shown on generated
+instances, deleting one instance left the other 12 untouched, link
+rendered as "Join meeting" on `/events`, `/upcoming`, and
+`/rsvp/:id`) — live-mode click-through was blocked by the automation
+classifier since it writes to the production DB, so that path relies
+on the migration push confirmation (`supabase migration list` shows
+remote `0011`) plus the mock-mode functional pass instead of a live
+screen recording.
+
 Next up: finish Phase 11 once Google Cloud setup lands, or extending
 departments/join-requests/events further (e.g. member-facing polish,
 dedupe on `/join`).

@@ -73,6 +73,9 @@ export interface EventRepository {
   listEvents(orgId: string): Promise<ChurchEvent[]>;
   getEvent(orgId: string, eventId: string): Promise<ChurchEvent | null>;
   createEvent(orgId: string, data: Omit<ChurchEvent, "id" | "orgId">): Promise<ChurchEvent>;
+  // Batch create for a recurring series — one round trip instead of N, same
+  // pattern as MemberRepository.createMembers().
+  createEvents(orgId: string, data: Omit<ChurchEvent, "id" | "orgId">[]): Promise<ChurchEvent[]>;
   updateEvent(
     orgId: string,
     eventId: string,
